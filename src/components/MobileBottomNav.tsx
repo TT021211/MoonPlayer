@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clover, Container, Film, Flame, Globe, Home, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
+import { Blend, Cat, Clapperboard, Clover, Container, Film, Flame, Globe, Home, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -55,6 +55,11 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       href: '/hanime',
     },
     {
+      icon: Clapperboard,
+      label: 'MissAV',
+      href: '/missav',
+    },
+    {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
@@ -91,6 +96,11 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         icon: Flame,
         label: '里番',
         href: '/hanime',
+      },
+      {
+        icon: Clapperboard,
+        label: 'MissAV',
+        href: '/missav',
       },
       {
         icon: Clover,
