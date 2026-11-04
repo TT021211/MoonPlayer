@@ -296,12 +296,13 @@ export async function getDetailFromApi(
 
 export async function getDetailFromApiV2(
   apiSite: ApiSite,
-  id: string
+  id: string,
+  timeoutMs = 120000 // 中转站（如 missav，经 ScraperAPI render）单次 20~60 秒，直连站远不需要这么久
 ): Promise<SearchResult> {
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const response = await fetch(detailUrl, {
     headers: API_CONFIG.detail.headers,
