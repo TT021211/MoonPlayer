@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clover, Container, Film, Globe, Home, Menu, Search, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
+import { Blend, Cat, Clover, Container, Film, Flame, Globe, Home, Menu, Search, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -150,6 +150,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       href: '/douban?type=anime',
     },
     {
+      icon: Flame,
+      label: '里番',
+      href: '/hanime',
+    },
+    {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
@@ -180,6 +185,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
         icon: Cat,
         label: '动漫',
         href: '/douban?type=anime',
+      },
+      {
+        icon: Flame,
+        label: '里番',
+        href: '/hanime',
       },
       {
         icon: Clover,
