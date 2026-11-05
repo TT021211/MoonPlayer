@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
 
 import './globals.css';
+import './mutefun-theme.css';
 
 import { parseAuthInfo } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
@@ -20,8 +21,6 @@ import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { TokenRefreshManager } from '../components/TokenRefreshManager';
 import TopProgressBar from '../components/TopProgressBar';
-import ChatFloatingWindow from '../components/watch-room/ChatFloatingWindow';
-import { WatchRoomProvider } from '../components/WatchRoomProvider';
 import { DownloadProvider } from '../contexts/DownloadContext';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -453,16 +452,13 @@ export default async function RootLayout({
             announcementDisplayMode={announcementDisplayMode}
             tmdbApiKey={tmdbApiKey}
           >
-            <WatchRoomProvider>
-              <DownloadProvider>
+            <DownloadProvider>
                 <StartupCacheCleanup />
                 {children}
                 <GlobalErrorIndicator />
-                <ChatFloatingWindow />
                 <DownloadBubble />
                 <DownloadPanel />
               </DownloadProvider>
-            </WatchRoomProvider>
           </SiteProvider>
         </ThemeProvider>
       </body>

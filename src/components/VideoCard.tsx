@@ -6,10 +6,8 @@ import {
   Heart,
   Info,
   Link,
-  ListPlus,
   PlayCircleIcon,
   Radio,
-  Sparkles,
   Trash2,
   Youtube,
 } from 'lucide-react';
@@ -26,8 +24,6 @@ import React, {
   useState,
 } from 'react';
 
-import { isAnimeCategoryText } from '@/lib/anime-keyword-expr';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -52,14 +48,11 @@ import {
 } from '@/lib/utils';
 import { useLongPress } from '@/hooks/useLongPress';
 
-import AIChatPanel from '@/components/AIChatPanel';
-import AnimeSubscribeModal from '@/components/AnimeSubscribeModal';
 import DetailPanel from '@/components/DetailPanel';
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import ImageViewer from '@/components/ImageViewer';
 import MobileActionSheet from '@/components/MobileActionSheet';
 import TrailerPickerDialog from '@/components/TrailerPickerDialog';
-import { useWatchRoomContextSafe } from '@/components/WatchRoomProvider';
 import type { TMDBVideoItem } from '@/lib/tmdb.client';
 
 export interface VideoCardProps {
@@ -154,20 +147,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     ref
   ) {
     const router = useRouter();
-    const watchRoomContext = useWatchRoomContextSafe();
-    // 观影室状态下短剧不走竖屏沉浸播放页（/duanju/play 不支持房间同步）
-    const isInWatchRoom = Boolean(watchRoomContext?.currentRoom);
-    const [showAnimeSubscribe, setShowAnimeSubscribe] = useState(false);
-    const [animeSubscribeToast, setAnimeSubscribeToast] = useState('');
-    const isAdminUser = useMemo(() => {
-      const auth = getAuthInfoFromBrowserCookie();
-      return auth?.role === 'admin' || auth?.role === 'owner';
-    }, []);
-    const resolvedIsAnime = useMemo(
-      () =>
-        Boolean(isBangumi || isAnime || isAnimeCategoryText(typeName)),
-      [isBangumi, isAnime, typeName]
-    );
+    // 观影室已移除：短剧入口不再需要房间态判断
+    const isInWatchRoom = false;
+    const [showDetailPanel, setShowDetailPanel] = useState(false);
     const actualTitle = title;
     const actualPoster = poster;
     const netdiskPosterPlaceholder = useMemo(() => {
@@ -195,15 +177,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
     ); // 搜索结果的收藏状态
-    const [showAIChat, setShowAIChat] = useState(false);
-    const [isAIStreaming, setIsAIStreaming] = useState(false);
-    const [aiEnabled, setAiEnabled] = useState(false);
     const [rateBadgeStyle, setRateBadgeStyle] = useState<
       'default' | 'flag' | 'medal'
     >('flag');
-    const [aiDefaultMessageWithVideo, setAiDefaultMessageWithVideo] =
-      useState('');
-    const [showDetailPanel, setShowDetailPanel] = useState(false);
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [showUpcomingInfo, setShowUpcomingInfo] = useState(false); // 控制即将上映倒计时的显示
     const [showTrailerPicker, setShowTrailerPicker] = useState(false);
@@ -212,21 +188,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [trailerVideos, setTrailerVideos] = useState<TMDBVideoItem[]>([]);
     const [displayPoster, setDisplayPoster] = useState(processedPoster);
 
-    // 检查AI功能是否启用
+    // 评分星标样式
     useEffect(() => {
       if (typeof window !== 'undefined') {
-        const enabled =
-          (window as any).RUNTIME_CONFIG?.AI_ENABLED &&
-          (window as any).RUNTIME_CONFIG?.AI_ENABLE_VIDEOCARD_ENTRY;
-        setAiEnabled(enabled);
-
-        // 加载AI默认消息配置
-        const defaultMsg = (window as any).RUNTIME_CONFIG
-          ?.AI_DEFAULT_MESSAGE_WITH_VIDEO;
-        if (defaultMsg) {
-          setAiDefaultMessageWithVideo(defaultMsg);
-        }
-
         // 评分星标样式
         const badgeStyle = (window as any).RUNTIME_CONFIG?.RATE_BADGE_STYLE;
         if (
@@ -929,43 +893,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         });
       }
 
-      // AI问片功能
-      if (aiEnabled && actualTitle) {
-        actions.push({
-          id: 'ai-chat',
-          label: 'AI问片',
-          icon: <Sparkles size={20} />,
-          onClick: () => {
-            setShowMobileActions(false);
-            // 延迟打开 AIChatPanel，确保 MobileActionSheet 完全清理完成
-            setTimeout(() => {
-              setShowAIChat(true);
-            }, 250);
-          },
-          color: 'default' as const,
-        });
-      }
-
-      // 添加追番订阅（仅管理员 + 判定为动漫）
-      if (
-        isAdminUser &&
-        resolvedIsAnime &&
-        origin !== 'live' &&
-        actualTitle
-      ) {
-        actions.push({
-          id: 'anime-subscribe',
-          label: '添加追番订阅',
-          icon: <ListPlus size={20} />,
-          onClick: () => {
-            setShowMobileActions(false);
-            setTimeout(() => {
-              setShowAnimeSubscribe(true);
-            }, 250);
-          },
-          color: 'primary' as const,
-        });
-      }
+      {/* （已精简：AI问片/追番订阅入口移除） */}
 
       return actions;
     }, [
@@ -983,15 +911,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       handleToggleFavorite,
       handleDeleteRecord,
       handlePlayInNewTab,
-      aiEnabled,
       actualTitle,
       actualSearchType,
       isUpcoming,
       origin,
       tmdb_id,
       openTrailerPicker,
-      isAdminUser,
-      resolvedIsAnime,
     ]);
 
     return (
@@ -2201,30 +2126,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           }}
         />
 
-        {/* AI问片面板 - 只在打开或正在流式响应时渲染 */}
-        {aiEnabled && (showAIChat || isAIStreaming) && (
-          <AIChatPanel
-            isOpen={showAIChat}
-            onClose={() => setShowAIChat(false)}
-            onStreamingChange={setIsAIStreaming}
-            context={{
-              title: actualTitle,
-              year: actualYear,
-              douban_id: actualDoubanId,
-              tmdb_id,
-              type: actualSearchType as 'movie' | 'tv',
-              currentEpisode,
-            }}
-            welcomeMessage={
-              aiDefaultMessageWithVideo
-                ? aiDefaultMessageWithVideo.replace(
-                    '{title}',
-                    actualTitle || ''
-                  )
-                : `想了解《${actualTitle}》的更多信息吗？我可以帮你查询剧情、演员、评价等。`
-            }
-          />
-        )}
+        {/* （已精简：AI问片面板/追番订阅弹窗移除） */}
 
         {/* 详情面板 */}
         {showDetailPanel && (
@@ -2247,24 +2149,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           />
         )}
 
-        {/* 添加追番订阅（管理员） */}
-        <AnimeSubscribeModal
-          isOpen={showAnimeSubscribe}
-          onClose={() => setShowAnimeSubscribe(false)}
-          initialTitle={actualTitle}
-          initialLastEpisode={
-            from === 'playrecord' && currentEpisode ? currentEpisode : 0
-          }
-          onSuccess={() => {
-            setAnimeSubscribeToast('已添加追番订阅');
-            window.setTimeout(() => setAnimeSubscribeToast(''), 2500);
-          }}
-        />
-        {animeSubscribeToast ? (
-          <div className='fixed bottom-24 left-1/2 z-[10001] -translate-x-1/2 rounded-full bg-green-600 px-4 py-2 text-sm text-white shadow-lg'>
-            {animeSubscribeToast}
-          </div>
-        ) : null}
+        {/* （已精简：追番订阅弹窗移除） */}
 
         {/* 图片查看器 */}
         {showImageViewer && (

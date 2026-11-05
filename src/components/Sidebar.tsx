@@ -17,7 +17,6 @@ import {
 import { SPECIAL_SOURCE_PATH } from '@/lib/special-source.client';
 
 import { useSite } from './SiteProvider';
-import { useWatchRoomContextSafe } from './WatchRoomProvider';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -64,11 +63,7 @@ declare global {
 const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const watchRoomContext = useWatchRoomContextSafe();
 
-  if (pathname === '/watch-room/screen') {
-    return null;
-  }
   // 若同一次 SPA 会话中已经读取过折叠状态，则直接复用，避免闪烁
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (
@@ -226,51 +221,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
         label: '综艺',
         href: '/douban?type=show',
       },
-      ...(runtimeConfig?.LIVE_ENABLED
-        ? [
-            {
-              icon: TvMinimalPlay,
-              label: '电视直播',
-              href: '/live',
-            },
-          ]
-        : []),
     ];
 
-    // 如果启用网络直播，添加网络直播入口
-    if (runtimeConfig?.WEB_LIVE_ENABLED) {
-      items.push({
-        icon: Globe,
-        label: '网络直播',
-        href: '/web-live',
-      });
-    }
-
-    // 如果配置了 OpenList 或 Emby，添加私人影库入口
-    if (runtimeConfig?.PRIVATE_LIBRARY_ENABLED) {
-      items.push({
-        icon: Container,
-        label: '私人影库',
-        href: '/private-library',
-      });
-    }
-
-    if (runtimeConfig?.ADVANCED_RECOMMENDATION_ENABLED) {
-      items.push({
-        icon: Blend,
-        label: '高级推荐',
-        href: '/advanced-recommendation',
-      });
-    }
-
-    // 如果启用观影室，添加观影室入口
-    if (watchRoomContext?.isEnabled) {
-      items.push({
-        icon: Users,
-        label: '观影室',
-        href: '/watch-room',
-      });
-    }
+    // 已精简：网络直播/私人影库/高级推荐/观影室入口移除
 
     // 添加自定义分类（如果有）
     if (runtimeConfig?.CUSTOM_CATEGORIES?.length > 0) {
@@ -281,10 +234,17 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       });
     }
 
+    // 源站浏览：通用自定义源按真实站点分类浏览
+    items.push({
+      icon: Container,
+      label: '源浏览',
+      href: '/browse',
+    });
+
     // 特殊源入口不在导航展示，只能手动访问 /under
 
     setMenuItems(items);
-  }, [watchRoomContext?.isEnabled]);
+  }, []);
 
   return (
     <SidebarContext.Provider value={contextValue}>

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { API_CONFIG, getAvailableApiSites, getConfig } from '@/lib/config';
 import { parseJsonLosslessIntegers } from '@/lib/json';
-import { yellowWords } from '@/lib/yellow';
+import { filterYellowByTypeName, shouldApplyYellowFilter } from '@/lib/yellow';
 
 export const runtime = 'nodejs';
 
@@ -68,13 +68,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 应用黄色过滤器规则
+    // 应用黄色过滤器规则（前台 ?yellowFilter= 可覆盖全局开关）
     let filteredCategories = classData.class;
-    if (!config.SiteConfig.DisableYellowFilter) {
-      filteredCategories = classData.class.filter((item) => {
-        const typeName = item.type_name || '';
-        return !yellowWords.some((word: string) => typeName.includes(word));
-      });
+    if (
+      shouldApplyYellowFilter(
+        searchParams.get('yellowFilter'),
+        config.SiteConfig.DisableYellowFilter
+      )
+    ) {
+      filteredCategories = filterYellowByTypeName(classData.class);
     }
 
     return NextResponse.json({

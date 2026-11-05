@@ -17,26 +17,15 @@ import type { DurableObjectNamespace, ExecutionContext } from './src/worker/cf-r
 // @ts-ignore 构建期由 opennextjs-cloudflare 生成
 export * from './.open-next/worker.js';
 
-export { WatchRoomHub } from './src/worker/watch-room-hub';
+// （观影室已移除：不再导出 WatchRoomHub Durable Object）
 
 interface Env {
-  WATCH_ROOM: DurableObjectNamespace;
   CRON_PASSWORD?: string;
   [key: string]: unknown;
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-
-    // 观影室的 Socket.IO 连接：整体交给 hub DO。
-    // 客户端在 internal 模式下连同源 /socket.io（server-config 默认就是 internal），
-    // 所以这里在进 Next 之前拦下来。
-    if (url.pathname === '/socket.io' || url.pathname.startsWith('/socket.io/')) {
-      const id = env.WATCH_ROOM.idFromName('hub');
-      return env.WATCH_ROOM.get(id).fetch(request);
-    }
-
     return openNextWorker.fetch(request, env, ctx);
   },
 

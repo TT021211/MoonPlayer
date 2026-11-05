@@ -3,17 +3,12 @@
 
 import {
   ChevronUp,
-  Film,
   Grid2x2,
-  HardDrive,
   List,
-  ListVideo,
-  Magnet,
   RefreshCw,
   Search,
   X,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, {
   startTransition,
@@ -40,13 +35,12 @@ import {
   SPECIAL_SOURCE_PATH,
 } from '@/lib/special-source.client';
 import { processImageUrl } from '@/lib/utils';
+import { YELLOW_FILTER_STORAGE_KEY } from '@/lib/yellow';
 
-import AcgSearch from '@/components/AcgSearch';
-import CapsuleSwitch from '@/components/CapsuleSwitch';
+import { CLOUD_TYPE_NAMES } from '@/components/PansouSearch';
 import ContinueWatching from '@/components/ContinueWatching';
 import ImageViewer from '@/components/ImageViewer';
 import PageLayout from '@/components/PageLayout';
-import PansouSearch, { CLOUD_TYPE_NAMES } from '@/components/PansouSearch';
 import ProxyImage from '@/components/ProxyImage';
 import SearchResultFilter, {
   SearchFilterCategory,
@@ -140,6 +134,18 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
   const [isFromCache, setIsFromCache] = useState(false);
   // 精确搜索开关
   const [exactSearch, setExactSearch] = useState(true);
+  // 黄色过滤开关（默认开启，localStorage 持久化，拼 ?yellowFilter= 传给搜索接口）
+  const [yellowFilterEnabled, setYellowFilterEnabled] = useState(true);
+  const handleYellowFilterChange = (enabled: boolean) => {
+    setYellowFilterEnabled(enabled);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(YELLOW_FILTER_STORAGE_KEY, enabled ? '1' : '0');
+    }
+    // 有已提交的搜索词时强制重搜，使开关即时生效
+    if (submittedSearchQuery) {
+      setForceRefresh(true);
+    }
+  };
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [privateLibraryOnly, setPrivateLibraryOnly] = useState(false);
   const [privateLibraryOnlyReady, setPrivateLibraryOnlyReady] = useState(false);
@@ -147,9 +153,16 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
   const advancedButtonRefs = useRef<HTMLButtonElement[]>([]);
   const advancedDropdownRefs = useRef<HTMLDivElement[]>([]);
 
+  // 每次请求时重新读取黄色过滤设置（与 fluidSearch 同模式，避免闭包过期）
+  const readYellowFilterParam = () => {
+    if (typeof window === 'undefined') return '&yellowFilter=1';
+    const saved = localStorage.getItem(YELLOW_FILTER_STORAGE_KEY);
+    return saved === '0' || saved === 'false'
+      ? '&yellowFilter=0'
+      : '&yellowFilter=1';
+  };
   // 生成缓存键
-  const getCacheKey = (query: string) => {
-    const suffixParts = [
+  const getCacheKey = (query: string) => {    const suffixParts = [
       isSpecialSourceContext() ? 'special' : '',
       privateLibraryOnly ? 'private' : '',
     ].filter(Boolean);
@@ -1121,6 +1134,16 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
         setExactSearch(savedExactSearch === 'true');
       }
 
+      // 读取黄色过滤设置（默认开启）
+      const savedYellowFilter = localStorage.getItem(
+        YELLOW_FILTER_STORAGE_KEY
+      );
+      if (savedYellowFilter !== null) {
+        setYellowFilterEnabled(
+          savedYellowFilter !== '0' && savedYellowFilter !== 'false'
+        );
+      }
+
       const savedPrivateLibraryOnly = localStorage.getItem(
         'searchPrivateLibraryOnly'
       );
@@ -1187,19 +1210,8 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
     if (isSpecialEntry) {
       // /under 特殊源入口只有影视搜索；忽略 URL 里的 type
       setActiveTab('video');
-    } else if (typeParam === 'pansou') {
-      if (netdiskSearchEnabled) {
-        setActiveTab('pansou');
-      } else {
-        setActiveTab('video');
-      }
-    } else if (typeParam === 'acg') {
-      if (magnetSearchEnabled) {
-        setActiveTab('acg');
-      } else {
-        setActiveTab('video');
-      }
     } else {
+      // 已精简：网盘/磁力 tab 移除，一律影视搜索
       setActiveTab('video');
     }
 
@@ -1363,7 +1375,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
         // 流式搜索：打开新的流式连接
         const searchUrl = `/api/search/ws?q=${encodeURIComponent(trimmed)}${
           privateLibraryOnly ? '&privateOnly=1' : ''
-        }`;
+        }${readYellowFilterParam()}`;
         const es = new EventSource(appendSpecialSourceParam(searchUrl));
         eventSourceRef.current = es;
 
@@ -1471,7 +1483,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
         // 传统搜索：使用普通接口
         const searchUrl = `/api/search?q=${encodeURIComponent(trimmed)}${
           privateLibraryOnly ? '&privateOnly=1' : ''
-        }`;
+        }${readYellowFilterParam()}`;
         fetch(appendSpecialSourceParam(searchUrl))
           .then((response) => response.json())
           .then((data) => {
@@ -1789,18 +1801,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
     }
   };
 
-  // 处理标签切换
-  const handleTabChange = (newTab: 'video' | 'pansou' | 'acg') => {
-    setActiveTab(newTab);
-
-    // 如果有搜索关键词，更新 URL
-    const currentQuery = searchParams.get('q');
-    if (currentQuery) {
-      router.push(
-        `${searchBase}?q=${encodeURIComponent(currentQuery)}&type=${newTab}`
-      );
-    }
-  };
+  // （已精简：网盘/磁力选项卡移除，仅保留影视搜索）
 
   return (
     <PageLayout activePath={searchBase}>
@@ -1865,69 +1866,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
             </div>
           </form>
 
-          {/* 选项卡：特殊源入口（/under）只有影视搜索，整块隐藏 */}
-          {!isSpecialEntry && (
-            <div className='flex justify-center mt-6'>
-              <CapsuleSwitch
-                options={[
-                  {
-                    label: '影视搜索',
-                    value: 'video',
-                    icon: <Film size={16} />,
-                  },
-                  ...(netdiskSearchEnabled
-                    ? [
-                        {
-                          label: '网盘搜索',
-                          value: 'pansou' as const,
-                          icon: <HardDrive size={16} />,
-                        },
-                      ]
-                    : []),
-                  ...(magnetSearchEnabled
-                    ? [
-                        {
-                          label: '动漫磁力',
-                          value: 'acg' as const,
-                          icon: <Magnet size={16} />,
-                        },
-                      ]
-                    : []),
-                ]}
-                active={activeTab}
-                onChange={(value) =>
-                  handleTabChange(value as 'video' | 'pansou' | 'acg')
-                }
-              />
-            </div>
-          )}
-
-          {/* 特殊源入口（/under）：不挂网盘/磁力 tab，改为提供一个「源站寻片」
-              特殊源版本的入口；进入后只浏览/搜索特殊源。
-              href 直接写死 special=1：本块只在 /under 渲染，用
-              appendSpecialSourceParam 会在 SSR（无 window）与客户端首帧不一致 */}
-          {isSpecialEntry && sourceSearchEnabled && (
-            <div className='flex justify-center mt-6'>
-              <Link
-                href='/source-search?special=1'
-                prefetch={false}
-                className='inline-flex items-center gap-2 rounded-full border border-blue-200/60 bg-blue-50/80 px-4 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100/80 dark:border-blue-800/60 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40'
-              >
-                <ListVideo size={16} />
-                源站寻片
-              </Link>
-            </div>
-          )}
-
-          {activeTab === 'pansou' &&
-            netdiskSearchEnabled &&
-            renderPansouCloudTypeFilter()}
-
-          {activeTab === 'acg' && magnetSearchEnabled && (
-            <div className='mt-4'>
-              <AcgSearch keyword={searchQuery} controlsOnly />
-            </div>
-          )}
+          {/* （已精简：网盘/磁力选项卡与源站寻片入口移除，仅保留影视搜索） */}
 
           {activeTab === 'video' && !showResults && (
             <div className='mx-auto mt-4 flex max-w-2xl justify-end'>
@@ -1995,6 +1934,23 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
                         </div>
                       </label>
                     )}
+                    <label className='flex cursor-pointer select-none items-center justify-between gap-3 rounded-lg px-1 py-2'>
+                      <span className='text-sm text-gray-700 dark:text-gray-300'>
+                        黄色过滤
+                      </span>
+                      <div className='relative'>
+                        <input
+                          type='checkbox'
+                          className='peer sr-only'
+                          checked={yellowFilterEnabled}
+                          onChange={(e) =>
+                            handleYellowFilterChange(e.target.checked)
+                          }
+                        />
+                        <div className='h-5 w-9 rounded-full bg-gray-300 transition-colors peer-checked:bg-green-500 dark:bg-gray-600'></div>
+                        <div className='absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4'></div>
+                      </div>
+                    </label>
                     <div className='mt-2 border-t border-gray-200 pt-2 dark:border-gray-700'>
                       <span className='px-1 text-sm text-gray-700 dark:text-gray-300'>
                         显示方式
@@ -2095,7 +2051,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
         >
           {showResults ? (
             <section className='mb-12'>
-              {activeTab === 'video' ? (
+              {
                 <>
                   {/* 影视搜索结果 */}
                   {/* 标题 */}
@@ -2465,35 +2421,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
                     })()
                   )}
                 </>
-              ) : activeTab === 'pansou' ? (
-                <>
-                  {/* 网盘搜索结果 */}
-                  <div className='mb-4'>
-                    <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                      网盘搜索结果
-                    </h2>
-                  </div>
-                  <PansouSearch
-                    keyword={searchQuery}
-                    triggerSearch={triggerPansouSearch}
-                    cloudTypes={selectedPansouCloudTypes}
-                  />
-                </>
-              ) : (
-                <>
-                  {/* ACG 磁力搜索结果 */}
-                  <div className='mb-4'>
-                    <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                      动漫磁力搜索结果
-                    </h2>
-                  </div>
-                  <AcgSearch
-                    keyword={searchQuery}
-                    triggerSearch={triggerAcgSearch}
-                    showSourceSwitch={false}
-                  />
-                </>
-              )}
+              }
             </section>
           ) : (
             <>

@@ -123,7 +123,9 @@ export async function GET(request: NextRequest) {
       results,
       total: videoData.total || 0,
       page: parseInt(page),
-      pageCount: videoData.pagecount || 0,
+      // 上游缺 pagecount 时按“有数据就还有下一页”兜底，前端以空页/重复页收敛
+      pageCount:
+        videoData.pagecount || (results.length > 0 ? parseInt(page) + 1 : parseInt(page)),
     });
   } catch (error) {
     console.error('Failed to get videos:', error);

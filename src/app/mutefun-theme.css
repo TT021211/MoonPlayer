@@ -1,0 +1,169 @@
+/* MoonTVPlus · MuteFun(MacCMS MX) 风格主题
+ * 参考 https://www.mutefun.tv/ ：浅底 #f7f8f9 + 文字 #282828 + 主色渐变 #ff711f→#e50914
+ * 只做视觉覆盖，不改布局结构与功能。挂载于 src/app/layout.tsx（globals.css 之后）。
+ */
+:root,
+.dark {
+  --mutefun-bg: #f7f8f9;
+  --mutefun-card: #ffffff;
+  --mutefun-text: #282828;
+  --mutefun-sub: #888888;
+  --mutefun-line: rgba(0, 0, 0, 0.07);
+  --mutefun-primary: #e50914;
+  --mutefun-gradient: linear-gradient(90deg, #ff711f 0%, #e50914 100%);
+}
+
+/* 1. 全局底色：浅灰，替代原蓝灰渐变 */
+html:not(.dark) body {
+  background: var(--mutefun-bg) !important;
+  background-attachment: scroll !important;
+  color: var(--mutefun-text) !important;
+}
+.dark body {
+  background: #141414 !important;
+  color: #e8e8e8 !important;
+}
+
+/* 主区居中收窄，学 CMS 的 content 居中 */
+main {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+}
+
+/* 2. 侧边栏：白底 + 细边框，active 红色渐变字 */
+html:not(.dark) aside[data-sidebar] {
+  background: #fff !important;
+  border-right: 1px solid var(--mutefun-line) !important;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.04) !important;
+}
+html:not(.dark) aside[data-sidebar] a[data-active='true'] {
+  background: rgba(229, 9, 20, 0.08) !important;
+  color: var(--mutefun-primary) !important;
+  box-shadow: inset 0 0 0 1px rgba(229, 9, 20, 0.15) !important;
+  border-radius: 10px !important;
+}
+html:not(.dark) aside[data-sidebar] a[data-active='true']::before {
+  background: var(--mutefun-gradient) !important;
+  box-shadow: none !important;
+}
+html:not(.dark) aside[data-sidebar] a:not([data-active='true']) {
+  color: #555 !important;
+}
+html:not(.dark) aside[data-sidebar] a:not([data-active='true']):hover {
+  color: var(--mutefun-primary) !important;
+  background: rgba(0, 0, 0, 0.03) !important;
+  transform: none !important;
+}
+html:not(.dark) aside[data-sidebar] a div[class*='w-4'] {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+html:not(.dark) aside[data-sidebar] a[data-active='true'] div[class*='w-4'] {
+  background: rgba(229, 9, 20, 0.12) !important;
+}
+/* Logo 文字改红 */
+html:not(.dark) aside[data-sidebar] div[class*='h-16'] a[href='/'] span {
+  color: var(--mutefun-text) !important;
+}
+
+/* 3. 轮播 Banner：大圆角 + 阴影，学 .banner */
+div.group[class*='overflow-hidden'] {
+  border-radius: 12px !important;
+  border: 1px solid var(--mutefun-line) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  max-height: 460px !important;
+  margin: 14px 0 6px 0 !important;
+}
+div.group button[class*='bg-gray-500'] {
+  background: var(--mutefun-gradient) !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35) !important;
+}
+div.group button[class*='bg-gray-500']:hover {
+  filter: brightness(1.05);
+  transform: none !important;
+}
+div.group button[class*='bg-gray-500'] svg {
+  fill: #fff !important;
+  color: #fff !important;
+}
+
+/* 4. 卡片行/海报墙：白卡 + 圆角 8px，标题单行 */
+div[class*='scrollbar-hide'][class*='gap-2'],
+div[class*='scrollbar-hide'][class*='space-x-2'] {
+  gap: 12px !important;
+}
+div[class*='scrollbar-hide'][class*='gap-2'] > div,
+div[class*='scrollbar-hide'][class*='space-x-2'] > div,
+div[class*='scrollbar-hide'][class*='gap-2'] > a,
+div[class*='scrollbar-hide'][class*='space-x-2'] > a {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+html:not(.dark) div[class*='scrollbar-hide'][class*='gap-2'] > div,
+html:not(.dark) div[class*='scrollbar-hide'][class*='space-x-2'] > div,
+html:not(.dark) div[class*='scrollbar-hide'][class*='gap-2'] > a,
+html:not(.dark) div[class*='scrollbar-hide'][class*='space-x-2'] > a {
+  background: var(--mutefun-card) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+div[class*='scrollbar-hide'][class*='gap-2'] > div:hover,
+div[class*='scrollbar-hide'][class*='space-x-2'] > div:hover,
+div[class*='scrollbar-hide'][class*='gap-2'] > a:hover,
+div[class*='scrollbar-hide'][class*='space-x-2'] > a:hover {
+  transform: translateY(-3px) !important;
+}
+div[class*='scrollbar-hide'][class*='gap-2'] img,
+div[class*='scrollbar-hide'][class*='space-x-2'] img {
+  border-radius: 8px 8px 0 0 !important;
+}
+/* 海报墙标题：深色单行，hover 变红（学 a:hover #e50914） */
+html:not(.dark) div[class*='grid'] a.block[class*='truncate'] {
+  color: var(--mutefun-text) !important;
+}
+div[class*='grid'] a.block[class*='truncate']:hover {
+  color: var(--mutefun-primary) !important;
+}
+
+/* 5. 胶囊/筛选：浅底 + 选中红渐变 */
+div[class*='bg-gray-200/60'][class*='rounded-full'],
+div[class*='bg-gray-300/80'][class*='rounded-full'] {
+  background: #fff !important;
+  border: 1px solid var(--mutefun-line) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+div[class*='bg-gray-200/60'] > div[class*='absolute'],
+div[class*='bg-gray-300/80'] div[class*='absolute'][class*='bg-white'] {
+  background: var(--mutefun-gradient) !important;
+  box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3) !important;
+}
+div[class*='bg-gray-200/60'] button[class*='text-gray-900'],
+div[class*='bg-gray-300/80'] button[class*='text-gray-900'] {
+  color: #fff !important;
+}
+div[class*='bg-white/60'][class*='rounded-2xl'] {
+  background: #fff !important;
+  border: 1px solid var(--mutefun-line) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
+}
+h1[class*='text-gray-800'] {
+  color: var(--mutefun-text) !important;
+}
+
+/* 6. 顶部进度条/滚动条改红 */
+#nprogress .bar {
+  background: var(--mutefun-primary) !important;
+  box-shadow: 0 0 10px rgba(229, 9, 20, 0.6) !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mutefun-primary) !important;
+}
+
+/* 7. 移动端底部导航：白底 */
+@media (max-width: 767px) {
+  div[class*='fixed'][class*='bottom-0'],
+  nav[class*='bottom'] {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-top: 1px solid var(--mutefun-line) !important;
+  }
+}

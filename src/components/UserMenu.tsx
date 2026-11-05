@@ -3,7 +3,6 @@
 'use client';
 
 import {
-  Bell,
   Check,
   ChevronDown,
   ChevronUp,
@@ -52,13 +51,9 @@ import { UpdateStatus } from '@/lib/version_check';
 
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { DownloadManagementPanel } from './DownloadManagementPanel';
-import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { FavoritesPanel } from './FavoritesPanel';
-import { NotificationPanel } from './NotificationPanel';
-import { OfflineDownloadPanel } from './OfflineDownloadPanel';
 import { PersonalCenterPanel } from './PersonalCenterPanel';
 import Toast, { ToastProps } from './Toast';
-import TVRemotePanel from './tv/TVRemotePanel';
 import { useVersionCheck } from './VersionCheckProvider';
 import { VersionPanel } from './VersionPanel';
 
@@ -76,17 +71,13 @@ export const UserMenu: React.FC = () => {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
   const [isVersionPanelOpen, setIsVersionPanelOpen] = useState(false);
-  const [isOfflineDownloadPanelOpen, setIsOfflineDownloadPanelOpen] =
-    useState(false);
-  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  // （已精简：离线下载/通知/邮件设置面板状态移除）
   const [isFavoritesPanelOpen, setIsFavoritesPanelOpen] = useState(false);
-  const [isEmailSettingsOpen, setIsEmailSettingsOpen] = useState(false);
   const [isDeviceManagementOpen, setIsDeviceManagementOpen] = useState(false);
   const [isEcoAppsOpen, setIsEcoAppsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isDownloadManagementOpen, setIsDownloadManagementOpen] =
     useState(false);
-  const [isTVRemoteOpen, setIsTVRemoteOpen] = useState(false);
   const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
   const [storageType, setStorageType] = useState<string>('localstorage');
   const [displayStorageType, setDisplayStorageType] =
@@ -115,7 +106,7 @@ export const UserMenu: React.FC = () => {
   const tvQrVideoRef = useRef<HTMLVideoElement | null>(null);
   const tvQrStreamRef = useRef<MediaStream | null>(null);
   const tvQrScanStopRef = useRef(false);
-  const [tvAccessTab, setTvAccessTab] = useState<'tvbox' | 'orion' | 'web'>('tvbox');
+  const [tvAccessTab, setTvAccessTab] = useState<'tvbox' | 'orion'>('tvbox');
 
   // Body 滚动锁定 - 使用 overflow 方式避免布局问题
   useEffect(() => {
@@ -124,14 +115,11 @@ export const UserMenu: React.FC = () => {
       isSettingsOpen ||
       isChangePasswordOpen ||
       isSubscribeOpen ||
-      isOfflineDownloadPanelOpen ||
-      isEmailSettingsOpen ||
       isDeviceManagementOpen ||
       isEcoAppsOpen ||
       isReportOpen ||
       isDownloadManagementOpen ||
-      isTvQrScannerOpen ||
-      isTVRemoteOpen
+      isTvQrScannerOpen
     ) {
       const body = document.body;
       const html = document.documentElement;
@@ -155,14 +143,11 @@ export const UserMenu: React.FC = () => {
     isSettingsOpen,
     isChangePasswordOpen,
     isSubscribeOpen,
-    isOfflineDownloadPanelOpen,
-    isEmailSettingsOpen,
     isDeviceManagementOpen,
     isEcoAppsOpen,
     isReportOpen,
     isDownloadManagementOpen,
     isTvQrScannerOpen,
-    isTVRemoteOpen,
   ]);
 
   // 设置相关状态
@@ -2930,11 +2915,7 @@ export const UserMenu: React.FC = () => {
     (authInfo?.role === 'owner' || authInfo?.role === 'admin') &&
     storageType !== 'localstorage';
 
-  // 检查是否显示离线下载按钮
-  const showOfflineDownload =
-    (authInfo?.role === 'owner' || authInfo?.role === 'admin') &&
-    typeof window !== 'undefined' &&
-    (window as any).RUNTIME_CONFIG?.ENABLE_OFFLINE_DOWNLOAD === true;
+  // （已精简：离线下载入口移除）
 
   // 检查是否显示修改密码按钮
   const showChangePassword =
@@ -3022,23 +3003,7 @@ export const UserMenu: React.FC = () => {
 
         {/* 菜单项 */}
         <div className='py-1'>
-          {/* 通知按钮 */}
-          <button
-            onClick={() => {
-              setIsOpen(false);
-              setIsNotificationPanelOpen(true);
-            }}
-            className='w-full px-3 py-2 text-left flex items-center gap-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm relative'
-          >
-            <Bell className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-            <span className='font-medium'>通知中心</span>
-            {unreadCount > 0 && (
-              <span className='ml-auto px-2 py-0.5 text-xs font-medium bg-red-500 text-white rounded-full'>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
-
+          {/* （已精简：通知中心入口移除） */}
           {/* 我的收藏按钮 */}
           <button
             onClick={() => {
@@ -3071,19 +3036,7 @@ export const UserMenu: React.FC = () => {
             </button>
           )}
 
-          {/* 离线下载按钮 */}
-          {showOfflineDownload && (
-            <button
-              onClick={() => {
-                setIsOfflineDownloadPanelOpen(true);
-                setIsOpen(false);
-              }}
-              className='w-full px-3 py-2 text-left flex items-center gap-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm'
-            >
-              <Download className='w-4 h-4 text-gray-500 dark:text-gray-400' />
-              <span className='font-medium'>离线下载</span>
-            </button>
-          )}
+          {/* （已精简：离线下载入口移除，浏览器端 M3U8 下载保留在播放页） */}
 
           {/* 电视访问按钮 */}
           <button
@@ -5533,11 +5486,10 @@ export const UserMenu: React.FC = () => {
             </button>
           </div>
 
-          <div className='mb-5 grid grid-cols-3 rounded-2xl bg-slate-100 p-1 dark:bg-white/10'>
+          <div className='mb-5 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-white/10'>
             {[
               { key: 'tvbox' as const, label: 'TVBox 订阅', icon: Rss },
               { key: 'orion' as const, label: 'OrionTV', icon: Download },
-              { key: 'web' as const, label: 'Web 电视', icon: Monitor },
             ].map((item) => {
               const Icon = item.icon;
               const active = tvAccessTab === item.key;
@@ -5547,7 +5499,7 @@ export const UserMenu: React.FC = () => {
                   type='button'
                   onClick={() => {
                     setTvAccessTab(item.key);
-                    if (item.key !== 'web') closeTvQrScanner();
+                    closeTvQrScanner();
                   }}
                   className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/70 ${
                     active
@@ -5731,58 +5683,7 @@ export const UserMenu: React.FC = () => {
             </section>
           )}
 
-          {tvAccessTab === 'web' && (
-            <section className='rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04]'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/25'>
-                  <Monitor className='h-5 w-5' />
-                </div>
-                <div>
-                  <h4 className='text-lg font-black text-slate-900 dark:text-slate-100'>
-                    Web 电视
-                  </h4>
-                  <p className='mt-1 text-sm text-slate-600 dark:text-slate-400'>
-                    手机扫描电视屏幕二维码并确认登录
-                  </p>
-                </div>
-              </div>
-                <p className='mt-5 text-sm leading-6 text-slate-600 dark:text-slate-400'>
-                {tvModeEnabled
-                  ? '电视端打开 /tv 后可扫码登录；在电视端“我的”页也可扫描局域网遥控二维码。'
-                  : '当前部署未开启 TV 模式，/tv 页面和 Web 电视遥控不可用。'}
-              </p>
-              {!tvModeEnabled && (
-                <div className='mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-200'>
-                  TV 模式未开启。请在环境变量中设置 ENABLE_TV_MODE=true 后重启服务。
-                </div>
-              )}
-              <div className='mt-5 grid gap-2 sm:grid-cols-2'>
-                <button
-                  type='button'
-                  onClick={startTvQrScanner}
-                  disabled={!tvModeEnabled}
-                  className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-white/10 dark:disabled:text-slate-500'
-                >
-                  打开相机扫码
-                  <Smartphone className='h-4 w-4' />
-                </button>
-                <button
-                  type='button'
-                  onClick={() => {
-                    if (!tvModeEnabled) return;
-                    setIsSubscribeOpen(false);
-                    setIsTVRemoteOpen(true);
-                  }}
-                  disabled={!tvModeEnabled}
-                  className='inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/70 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 dark:disabled:bg-white/10 dark:disabled:text-slate-500'
-                >
-                  <Sliders className='h-4 w-4' />
-                  远程电视遥控器
-                </button>
-              </div>
-
-            </section>
-          )}
+                    {/* （已精简：Web 电视 tab 移除，/tv 已下线） */}
             </>
           )}
         </div>
@@ -6263,11 +6164,6 @@ export const UserMenu: React.FC = () => {
         roleBadgeClassName={roleBadgeClassName}
         showDeviceManagement={storageType !== 'localstorage'}
         showChangePassword={showChangePassword}
-        onOpenEmailSettings={() => {
-          setIsProfileCenterOpen(false);
-          setIsEmailSettingsOpen(true);
-          loadEmailSettings();
-        }}
         onOpenDeviceManagement={() => {
           setIsProfileCenterOpen(false);
           setIsDeviceManagementOpen(true);
@@ -6301,30 +6197,7 @@ export const UserMenu: React.FC = () => {
         onClose={() => setIsVersionPanelOpen(false)}
       />
 
-      {/* 离线下载面板 */}
-      <OfflineDownloadPanel
-        isOpen={isOfflineDownloadPanelOpen}
-        onClose={() => setIsOfflineDownloadPanelOpen(false)}
-      />
-
-      {/* 使用 Portal 将通知面板渲染到 document.body */}
-      {isNotificationPanelOpen &&
-        mounted &&
-        createPortal(
-          <NotificationPanel
-            isOpen={isNotificationPanelOpen}
-            onOpenNotificationSettings={() => {
-              setIsNotificationPanelOpen(false);
-              setIsEmailSettingsOpen(true);
-              void loadEmailSettings();
-            }}
-            onClose={() => {
-              setIsNotificationPanelOpen(false);
-              // 不需要在这里刷新，NotificationPanel 内部会触发事件
-            }}
-          />,
-          document.body
-        )}
+      {/* （已精简：离线下载/通知/邮件设置面板移除） */}
 
       {/* 使用 Portal 将收藏面板渲染到 document.body */}
       {isFavoritesPanelOpen &&
@@ -6348,32 +6221,7 @@ export const UserMenu: React.FC = () => {
           document.body
         )}
 
-      <EmailSettingsPanel
-        isOpen={isEmailSettingsOpen}
-        mounted={mounted}
-        onClose={() => setIsEmailSettingsOpen(false)}
-        userEmail={userEmail}
-        onUserEmailChange={setUserEmail}
-        emailNotifications={emailNotifications}
-        onEmailNotificationsChange={setEmailNotifications}
-        pushNotifications={pushNotifications}
-        onPushNotificationsChange={handlePushNotificationsChange}
-        pushNotificationsSupported={pushNotificationsSupported}
-        pushNotificationsConfigured={pushNotificationsConfigured}
-        pushNotificationsBusy={pushNotificationsBusy}
-        telegramEnabled={telegramEnabled}
-        telegramBound={telegramBound}
-        telegramUsername={telegramUsername}
-        telegramBindCode={telegramBindCode}
-        telegramDeepLink={telegramDeepLink}
-        telegramBindingBusy={telegramBindingBusy}
-        onCreateTelegramBindCode={handleCreateTelegramBindCode}
-        emailSettingsLoading={emailSettingsLoading}
-        emailSettingsSaving={emailSettingsSaving}
-        onSave={handleSaveEmailSettings}
-        statusMessage={emailSettingsMessage}
-        statusType={emailSettingsMessageType}
-      />
+      {/* （已精简：邮件设置面板移除） */}
 
       <DeviceManagementPanel
         isOpen={isDeviceManagementOpen}
@@ -6387,11 +6235,7 @@ export const UserMenu: React.FC = () => {
         getDeviceIcon={getDeviceIcon}
       />
 
-      <TVRemotePanel
-        isOpen={isTVRemoteOpen}
-        mounted={mounted}
-        onClose={() => setIsTVRemoteOpen(false)}
-      />
+      {/* （已精简：电视遥控面板移除，/tv 已下线） */}
 
       {/* 使用 Portal 将生态应用面板渲染到 document.body */}
       {isEcoAppsOpen && mounted && createPortal(ecoAppsPanel, document.body)}

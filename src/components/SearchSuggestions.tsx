@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { YELLOW_FILTER_STORAGE_KEY } from '@/lib/yellow';
+
 interface SearchSuggestionsProps {
   query: string;
   isVisible: boolean;
@@ -41,8 +43,13 @@ export default function SearchSuggestions({
     abortControllerRef.current = controller;
 
     try {
+      let yellowFilterParam = '&yellowFilter=1';
+      try {
+        const saved = localStorage.getItem(YELLOW_FILTER_STORAGE_KEY);
+        if (saved === '0' || saved === 'false') yellowFilterParam = '&yellowFilter=0';
+      } catch {}
       const response = await fetch(
-        `/api/search/suggestions?q=${encodeURIComponent(searchQuery)}`,
+        `/api/search/suggestions?q=${encodeURIComponent(searchQuery)}${yellowFilterParam}`,
         {
           signal: controller.signal,
         }

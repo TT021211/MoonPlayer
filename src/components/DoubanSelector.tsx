@@ -5,7 +5,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import MultiLevelSelector from './MultiLevelSelector';
-import WeekdaySelector from './WeekdaySelector';
 
 interface SelectorOption {
   label: string;
@@ -19,10 +18,6 @@ interface DoubanSelectorProps {
   onPrimaryChange: (value: string) => void;
   onSecondaryChange: (value: string) => void;
   onMultiLevelChange?: (values: Record<string, string>) => void;
-  onWeekdayChange: (weekday: string) => void;
-  /** 「每日放送」的展示视图：卡片网格 / 时刻表时间轴 */
-  viewMode?: 'grid' | 'schedule';
-  onViewModeChange?: (viewMode: 'grid' | 'schedule') => void;
 }
 
 const DoubanSelector: React.FC<DoubanSelectorProps> = ({
@@ -32,9 +27,6 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
   onPrimaryChange,
   onSecondaryChange,
   onMultiLevelChange,
-  onWeekdayChange,
-  viewMode = 'grid',
-  onViewModeChange,
 }) => {
   // 为不同的选择器创建独立的refs和状态
   const primaryContainerRef = useRef<HTMLDivElement>(null);
@@ -99,17 +91,8 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '国外', value: 'show_foreign' },
   ];
 
-  // 动漫一级选择器选项
+  // 动漫一级选择器选项（已精简：每日放送/时刻表移除）
   const animePrimaryOptions: SelectorOption[] = [
-    { label: '每日放送', value: '每日放送' },
-    { label: '番剧', value: '番剧' },
-    { label: '剧场版', value: '剧场版' },
-  ];
-
-  const scheduleValue = '__schedule__';
-  const animeSelectorOptions: SelectorOption[] = [
-    { label: '每日放送', value: '每日放送' },
-    { label: '时刻表', value: scheduleValue },
     { label: '番剧', value: '番剧' },
     { label: '剧场版', value: '剧场版' },
   ];
@@ -177,11 +160,8 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         setPrimaryIndicatorStyle
       );
     } else if (type === 'anime') {
-      const activeValue =
-        primarySelection === '每日放送' && viewMode === 'schedule'
-          ? scheduleValue
-          : primarySelection || animePrimaryOptions[0].value;
-      const activeIndex = animeSelectorOptions.findIndex(
+      const activeValue = primarySelection || animePrimaryOptions[0].value;
+      const activeIndex = animePrimaryOptions.findIndex(
         (opt) => opt.value === activeValue
       );
       updateIndicatorPosition(
@@ -256,11 +236,8 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       );
       return cleanup;
     } else if (type === 'anime') {
-      const activeValue =
-        primarySelection === '每日放送' && viewMode === 'schedule'
-          ? scheduleValue
-          : primarySelection;
-      const activeIndex = animeSelectorOptions.findIndex(
+      const activeValue = primarySelection;
+      const activeIndex = animePrimaryOptions.findIndex(
         (opt) => opt.value === activeValue
       );
       const cleanup = updateIndicatorPosition(
@@ -282,7 +259,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       );
       return cleanup;
     }
-  }, [primarySelection, viewMode]);
+  }, [primarySelection]);
 
   // 监听副选择器变化
   useEffect(() => {
@@ -484,58 +461,36 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             </span>
             <div className='overflow-x-auto'>
               {renderCapsuleSelector(
-                animeSelectorOptions,
-                primarySelection === '每日放送' && viewMode === 'schedule'
-                  ? scheduleValue
-                  : primarySelection || animePrimaryOptions[0].value,
-                (value) => {
-                  if (value === scheduleValue) {
-                    onPrimaryChange('每日放送');
-                    onViewModeChange?.('schedule');
-                    return;
-                  }
-                  onPrimaryChange(value);
-                  onViewModeChange?.('grid');
-                },
+                animePrimaryOptions,
+                primarySelection || animePrimaryOptions[0].value,
+                onPrimaryChange,
                 true
               )}
             </div>
           </div>
 
-          {/* 筛选部分 - 根据一级选择器显示不同内容 */}
-          {(primarySelection || animePrimaryOptions[0].value) === '每日放送' ? (
-            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                星期
-              </span>
-              <div className='overflow-x-auto'>
-                <WeekdaySelector onWeekdayChange={onWeekdayChange} />
-              </div>
+          {/* 筛选部分 */}
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              筛选
+            </span>
+            <div className='overflow-x-auto'>
+              {(primarySelection || animePrimaryOptions[0].value) ===
+              '番剧' ? (
+                <MultiLevelSelector
+                  key={`anime-tv-${primarySelection}`}
+                  onChange={handleMultiLevelChange}
+                  contentType='anime-tv'
+                />
+              ) : (
+                <MultiLevelSelector
+                  key={`anime-movie-${primarySelection}`}
+                  onChange={handleMultiLevelChange}
+                  contentType='anime-movie'
+                />
+              )}
             </div>
-          ) : (
-            // 其他分类下显示原有的筛选功能
-            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                筛选
-              </span>
-              <div className='overflow-x-auto'>
-                {(primarySelection || animePrimaryOptions[0].value) ===
-                '番剧' ? (
-                  <MultiLevelSelector
-                    key={`anime-tv-${primarySelection}`}
-                    onChange={handleMultiLevelChange}
-                    contentType='anime-tv'
-                  />
-                ) : (
-                  <MultiLevelSelector
-                    key={`anime-movie-${primarySelection}`}
-                    onChange={handleMultiLevelChange}
-                    contentType='anime-movie'
-                  />
-                )}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
 

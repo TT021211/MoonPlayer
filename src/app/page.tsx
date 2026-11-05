@@ -3,27 +3,17 @@
 'use client';
 
 import {
-  BookMarked,
-  BookOpen,
-  Bot,
   ChevronRight,
   Link as LinkIcon,
-  ListVideo,
-  Music,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
-import {
-  BangumiCalendarData,
-  GetBangumiCalendarData,
-} from '@/lib/bangumi.client';
 import { getDoubanCategories } from '@/lib/douban.client';
 import { getTMDBImageUrl, TMDBItem } from '@/lib/tmdb.client';
 import { DoubanItem } from '@/lib/types';
 import { base58Encode, processImageUrl } from '@/lib/utils';
 
-import AIChatPanel from '@/components/AIChatPanel';
 import BannerCarousel from '@/components/BannerCarousel';
 import ContinueWatching from '@/components/ContinueWatching';
 import FireworksCanvas from '@/components/FireworksCanvas';
@@ -47,18 +37,12 @@ function HomeClient() {
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
-  const [hotDuanju, setHotDuanju] = useState<any[]>([]);
   const [upcomingContent, setUpcomingContent] = useState<TMDBItem[]>([]);
-  const [bangumiCalendarData, setBangumiCalendarData] = useState<
-    BangumiCalendarData[]
-  >([]);
   const [loading, setLoading] = useState(true);
   const { announcement, announcementDisplayMode } = useSite();
-  // 首页模块配置状态
+  // 首页模块配置状态（已精简：热播短剧/新番放送移除）
   const [homeModules, setHomeModules] = useState<HomeModule[]>([
     { id: 'hotMovies', name: '热门电影', enabled: true, order: 0 },
-    { id: 'hotDuanju', name: '热播短剧', enabled: true, order: 1 },
-    { id: 'bangumiCalendar', name: '新番放送', enabled: true, order: 2 },
     { id: 'hotTvShows', name: '热门剧集', enabled: true, order: 3 },
     { id: 'hotVarietyShows', name: '热门综艺', enabled: true, order: 4 },
     { id: 'upcomingContent', name: '即将上映', enabled: true, order: 5 },
@@ -69,15 +53,7 @@ function HomeClient() {
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [showHttpWarning, setShowHttpWarning] = useState(true);
-  const [showAIChat, setShowAIChat] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [aiDefaultMessageNoVideo, setAiDefaultMessageNoVideo] = useState(
-    '你好！我是MoonTVPlus的AI影视助手。想看什么电影或剧集？需要推荐吗？'
-  );
-  const [sourceSearchEnabled, setSourceSearchEnabled] = useState(true);
-  const [musicEnabled, setMusicEnabled] = useState(false);
-  const [mangaEnabled, setMangaEnabled] = useState(false);
-  const [booksEnabled, setBooksEnabled] = useState(false);
+  // （已精简：AI问片/音乐/漫画/电子书/源站寻片入口移除）
   const [netdiskTempPlayEnabled, setNetdiskTempPlayEnabled] = useState(false);
   const [showDirectPlayDialog, setShowDirectPlayDialog] = useState(false);
   const [directPlayUrl, setDirectPlayUrl] = useState('');
@@ -300,55 +276,7 @@ function HomeClient() {
     };
   }, []);
 
-  // 检查AI功能是否启用
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const enabled =
-        (window as any).RUNTIME_CONFIG?.AI_ENABLED &&
-        (window as any).RUNTIME_CONFIG?.AI_ENABLE_HOMEPAGE_ENTRY;
-      setAiEnabled(enabled);
-
-      // 加载AI默认消息配置
-      const defaultMsg = (window as any).RUNTIME_CONFIG
-        ?.AI_DEFAULT_MESSAGE_NO_VIDEO;
-      if (defaultMsg) {
-        setAiDefaultMessageNoVideo(defaultMsg);
-      }
-    }
-  }, []);
-
-  // 检查源站寻片功能是否启用
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const enabled =
-        (window as any).RUNTIME_CONFIG?.ENABLE_SOURCE_SEARCH !== false;
-      setSourceSearchEnabled(enabled);
-    }
-  }, []);
-
-  // 检查音乐功能是否启用
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const enabled = !!(window as any).RUNTIME_CONFIG?.MUSIC_ENABLED;
-      setMusicEnabled(enabled);
-    }
-  }, []);
-
-  // 检查漫画功能是否启用
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const enabled = !!(window as any).RUNTIME_CONFIG?.SUWAYOMI_ENABLED;
-      setMangaEnabled(enabled);
-    }
-  }, []);
-
-  // 检查电子书功能是否启用
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const enabled = !!(window as any).RUNTIME_CONFIG?.BOOKS_ENABLED;
-      setBooksEnabled(enabled);
-    }
-  }, []);
+  // （已精简：AI问片/源站寻片/音乐/漫画/电子书入口移除，不再读取相关开关）
 
   // 检查网盘临时播放权限，仅有权限时在直链播放弹窗展示网盘在线播放提示
   useEffect(() => {
@@ -411,23 +339,17 @@ function HomeClient() {
     const moviesCache = getCache('homepage_movies');
     const tvShowsCache = getCache('homepage_tvshows');
     const varietyCache = getCache('homepage_variety');
-    const bangumiCache = getCache('homepage_bangumi');
-    const duanjuCache = getCache('homepage_duanju');
     const upcomingCache = getCache('homepage_upcoming');
 
     if (moviesCache?.data) setHotMovies(moviesCache.data);
     if (tvShowsCache?.data) setHotTvShows(tvShowsCache.data);
     if (varietyCache?.data) setHotVarietyShows(varietyCache.data);
-    if (bangumiCache?.data) setBangumiCalendarData(bangumiCache.data);
-    if (duanjuCache?.data) setHotDuanju(duanjuCache.data);
     if (upcomingCache?.data) setUpcomingContent(upcomingCache.data);
 
     const hasCache =
       moviesCache ||
       tvShowsCache ||
       varietyCache ||
-      bangumiCache ||
-      duanjuCache ||
       upcomingCache;
     if (hasCache) setLoading(false);
 
@@ -438,10 +360,6 @@ function HomeClient() {
       tvShowsCache.expired ||
       !varietyCache ||
       varietyCache.expired ||
-      !bangumiCache ||
-      bangumiCache.expired ||
-      !duanjuCache ||
-      duanjuCache.expired ||
       !upcomingCache ||
       upcomingCache.expired;
 
@@ -452,7 +370,6 @@ function HomeClient() {
             moviesData,
             tvShowsData,
             varietyShowsData,
-            bangumiCalendarData,
           ] = await Promise.all([
             getDoubanCategories({
               kind: 'movie',
@@ -478,10 +395,6 @@ function HomeClient() {
               console.error('获取热门综艺数据失败:', error);
               return null;
             }),
-            GetBangumiCalendarData().catch((error) => {
-              console.error('获取新番放送数据失败:', error);
-              return [];
-            }),
           ]);
 
           if (moviesData?.code === 200) {
@@ -501,27 +414,6 @@ function HomeClient() {
             if (varietyShowsData.list && varietyShowsData.list.length > 0) {
               setCache('homepage_variety', varietyShowsData.list);
             }
-          }
-          setBangumiCalendarData(bangumiCalendarData);
-          if (bangumiCalendarData && bangumiCalendarData.length > 0) {
-            setCache('homepage_bangumi', bangumiCalendarData);
-          }
-
-          try {
-            const duanjuResponse = await fetch('/api/duanju/recommends');
-            if (duanjuResponse.ok) {
-              const duanjuResult = await duanjuResponse.json();
-              if (
-                duanjuResult.code === 200 &&
-                duanjuResult.data &&
-                duanjuResult.data.length > 0
-              ) {
-                setHotDuanju(duanjuResult.data);
-                setCache('homepage_duanju', duanjuResult.data);
-              }
-            }
-          } catch (error) {
-            console.error('获取热播短剧数据失败:', error);
           }
 
           try {
@@ -614,135 +506,7 @@ function HomeClient() {
           </section>
         );
 
-      case 'hotDuanju':
-        if (hotDuanju.length === 0) return null;
-        return (
-          <section key='hotDuanju' className='mb-8'>
-            <div className='mb-4 flex items-center justify-between'>
-              <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                热播短剧
-              </h2>
-              <Link
-                href='/duanju'
-                className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              >
-                查看更多
-                <ChevronRight className='w-4 h-4 ml-1' />
-              </Link>
-            </div>
-            <ScrollableRow>
-              {loading
-                ? Array.from({ length: 8 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                    >
-                      <div className='aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse mb-2' />
-                      <div className='h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4' />
-                    </div>
-                  ))
-                : hotDuanju.map((duanju) => (
-                    <div
-                      key={duanju.id + duanju.source}
-                      className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                    >
-                      <VideoCard
-                        id={duanju.id}
-                        source={duanju.source}
-                        poster={duanju.poster}
-                        title={duanju.title}
-                        year={duanju.year}
-                        type='tv'
-                        from='search'
-                        isDuanju
-                        source_name={duanju.source_name}
-                        episodes={duanju.episodes?.length}
-                        douban_id={duanju.douban_id}
-                        cmsData={{
-                          desc: duanju.desc,
-                          episodes: duanju.episodes,
-                          episodes_titles: duanju.episodes_titles,
-                        }}
-                      />
-                    </div>
-                  ))}
-            </ScrollableRow>
-          </section>
-        );
-
-      case 'bangumiCalendar':
-        return (
-          <section key='bangumiCalendar' className='mb-8'>
-            <div className='mb-4 flex items-center justify-between'>
-              <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                新番放送
-              </h2>
-              <Link
-                href='/douban?type=anime'
-                className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              >
-                查看更多
-                <ChevronRight className='w-4 h-4 ml-1' />
-              </Link>
-            </div>
-            <ScrollableRow>
-              {loading
-                ? Array.from({ length: 8 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                    >
-                      <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                        <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
-                      </div>
-                      <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
-                    </div>
-                  ))
-                : (() => {
-                    const today = new Date();
-                    const weekdays = [
-                      'Sun',
-                      'Mon',
-                      'Tue',
-                      'Wed',
-                      'Thu',
-                      'Fri',
-                      'Sat',
-                    ];
-                    const currentWeekday = weekdays[today.getDay()];
-                    const todayAnimes =
-                      bangumiCalendarData
-                        .find((item) => item.weekday.en === currentWeekday)
-                        ?.items.filter((anime) => anime.images) || [];
-
-                    return todayAnimes.map((anime, index) => (
-                      <div
-                        key={`${anime.id}-${index}`}
-                        className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                      >
-                        <VideoCard
-                          from='douban'
-                          title={anime.name_cn || anime.name}
-                          poster={
-                            anime.images?.large ||
-                            anime.images?.common ||
-                            anime.images?.medium ||
-                            anime.images?.small ||
-                            anime.images?.grid ||
-                            ''
-                          }
-                          douban_id={anime.id}
-                          rate={anime.rating?.score?.toFixed(1) || ''}
-                          year={anime.air_date?.split('-')?.[0] || ''}
-                          isBangumi={true}
-                        />
-                      </div>
-                    ));
-                  })()}
-            </ScrollableRow>
-          </section>
-        );
-
+      // （已精简：hotDuanju / bangumiCalendar 模块移除）
       case 'hotTvShows':
         return (
           <section key='hotTvShows' className='mb-8'>
@@ -894,7 +658,7 @@ function HomeClient() {
         <div className='max-w-[95%] mx-auto'>
           {/* 首页内容 */}
           <>
-            {/* 源站寻片和AI问片入口 */}
+            {/* 源站寻片和AI问片入口（已精简：仅保留直链播放） */}
             <div
               className={`flex items-center justify-end gap-2 mb-4 ${
                 homeBannerEnabled ? '' : 'mt-[30px]'
@@ -908,61 +672,7 @@ function HomeClient() {
                 <LinkIcon size={18} />
               </button>
 
-              {musicEnabled && (
-                <Link href='/music' prefetch={false}>
-                  <button
-                    className='p-1.5 rounded-lg text-green-500 hover:text-green-600 transition-colors'
-                    title='音乐视听'
-                  >
-                    <Music size={18} />
-                  </button>
-                </Link>
-              )}
-
-              {mangaEnabled && (
-                <Link href='/manga' prefetch={false}>
-                  <button
-                    className='p-1.5 rounded-lg text-emerald-500 hover:text-emerald-600 transition-colors'
-                    title='漫画展馆'
-                  >
-                    <BookOpen size={18} />
-                  </button>
-                </Link>
-              )}
-
-              {booksEnabled && (
-                <Link href='/books' prefetch={false}>
-                  <button
-                    className='p-1.5 rounded-lg text-amber-500 hover:text-amber-600 transition-colors'
-                    title='电子书馆'
-                  >
-                    <BookMarked size={18} />
-                  </button>
-                </Link>
-              )}
-
-              {/* 源站寻片入口 */}
-              {sourceSearchEnabled && (
-                <Link href='/source-search'>
-                  <button
-                    className='p-2 rounded-lg text-blue-500 hover:text-blue-600 transition-colors'
-                    title='源站寻片'
-                  >
-                    <ListVideo size={20} />
-                  </button>
-                </Link>
-              )}
-
-              {/* AI问片入口 */}
-              {aiEnabled && (
-                <button
-                  onClick={() => setShowAIChat(true)}
-                  className='p-2 rounded-lg text-purple-500 hover:text-purple-600 transition-colors'
-                  title='AI问片'
-                >
-                  <Bot size={20} />
-                </button>
-              )}
+              {/* （已精简：音乐/漫画/电子书/源站寻片/AI问片入口移除） */}
             </div>
 
             {/* 继续观看 */}
@@ -982,14 +692,7 @@ function HomeClient() {
         <HttpWarningDialog onClose={() => setShowHttpWarning(false)} />
       )}
 
-      {/* AI问片面板 */}
-      {aiEnabled && (
-        <AIChatPanel
-          isOpen={showAIChat}
-          onClose={() => setShowAIChat(false)}
-          welcomeMessage={aiDefaultMessageNoVideo}
-        />
-      )}
+      {/* （已精简：AI问片面板移除） */}
 
       {/* 公告弹窗 */}
       {showAnnouncement && (

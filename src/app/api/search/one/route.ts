@@ -9,7 +9,7 @@ import {
   normalizeScriptSearchResults,
   normalizeScriptSources,
 } from '@/lib/source-script';
-import { yellowWords } from '@/lib/yellow';
+import { filterYellowByTypeName, shouldApplyYellowFilter } from '@/lib/yellow';
 
 export const runtime = 'nodejs';
 
@@ -75,11 +75,13 @@ export async function GET(request: NextRequest) {
       );
 
       let result = scriptResults.flat().filter((r) => r.title === query);
-      if (!config.SiteConfig.DisableYellowFilter) {
-        result = result.filter((item) => {
-          const typeName = item.type_name || '';
-          return !yellowWords.some((word: string) => typeName.includes(word));
-        });
+      if (
+        shouldApplyYellowFilter(
+          searchParams.get('yellowFilter'),
+          config.SiteConfig.DisableYellowFilter
+        )
+      ) {
+        result = filterYellowByTypeName(result);
       }
 
       const cacheTime = await getCacheTime();
@@ -120,11 +122,13 @@ export async function GET(request: NextRequest) {
 
     const results = await searchFromApi(targetSite, query);
     let result = results.filter((r) => r.title === query);
-    if (!config.SiteConfig.DisableYellowFilter) {
-      result = result.filter((result) => {
-        const typeName = result.type_name || '';
-        return !yellowWords.some((word: string) => typeName.includes(word));
-      });
+    if (
+      shouldApplyYellowFilter(
+        searchParams.get('yellowFilter'),
+        config.SiteConfig.DisableYellowFilter
+      )
+    ) {
+      result = filterYellowByTypeName(result);
     }
     const cacheTime = await getCacheTime();
 

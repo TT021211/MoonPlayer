@@ -107,19 +107,10 @@ import {
 } from '@/lib/hls-ad-filter.client';
 import { useEnableAIComments } from '@/hooks/useEnableAIComments';
 import { useEnableComments } from '@/hooks/useEnableComments';
-import { useWatchRoomContextSafe } from '@/components/WatchRoomProvider';
-import {
-  getRoomRemotePlaybackRate,
-  isRemoteRoomRateActive,
-  usePlaySync,
-} from '@/hooks/usePlaySync';
 
-import AIChatPanel from '@/components/AIChatPanel';
-import AIComments from '@/components/AIComments';
 import CorrectDialog from '@/components/CorrectDialog';
 import DanmakuFilterSettings from '@/components/DanmakuFilterSettings';
 import DetailPanel from '@/components/DetailPanel';
-import DoubanComments from '@/components/DoubanComments';
 import DownloadEpisodeSelector from '@/components/DownloadEpisodeSelector';
 import Drawer from '@/components/Drawer';
 import EpisodeSelector from '@/components/EpisodeSelector';
@@ -128,10 +119,8 @@ import LoadingStyle, {
   type LoadingStep,
 } from '@/components/LoadingStyle';
 import PageLayout from '@/components/PageLayout';
-import PansouSearch from '@/components/PansouSearch';
 import ProxyImage from '@/components/ProxyImage';
 import { useSite } from '@/components/SiteProvider';
-import SmartRecommendations from '@/components/SmartRecommendations';
 import Toast, { ToastProps } from '@/components/Toast';
 import VideoCard from '@/components/VideoCard';
 
@@ -356,40 +345,13 @@ function PlayPageClient() {
   // 收藏状态
   const [favorited, setFavorited] = useState(false);
 
-  // 网盘搜索弹窗状态
-  const [showPansouDialog, setShowPansouDialog] = useState(false);
-  const [netdiskSearchEnabled, setNetdiskSearchEnabled] = useState(false);
-
-  // AI问片状态
-  const [showAIChat, setShowAIChat] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [aiDefaultMessageWithVideo, setAiDefaultMessageWithVideo] = useState('');
+  // （已精简：网盘搜索/AI问片/快捷键弹窗状态移除）
 
   // 纠错弹窗状态
   const [showCorrectDialog, setShowCorrectDialog] = useState(false);
 
   // 详情面板状态
   const [showDetailPanel, setShowDetailPanel] = useState(false);
-
-  // 快捷键说明弹窗状态
-  const [showShortcutDialog, setShowShortcutDialog] = useState(false);
-
-  useEffect(() => {
-    if (!showShortcutDialog) {
-      return;
-    }
-
-    const handleShortcutDialogKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowShortcutDialog(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleShortcutDialogKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleShortcutDialogKeyDown);
-    };
-  }, [showShortcutDialog]);
 
   // 大屏设备检测（判断选集面板是否在右侧）
   const [isLargeScreen, setIsLargeScreen] = useState(false);
@@ -405,17 +367,11 @@ function PlayPageClient() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // 抽屉管理：打开指定抽屉时关闭其他抽屉
-  const openDrawer = (drawerName: 'pansou' | 'aiChat' | 'correct' | 'detail') => {
+  // 抽屉管理：打开指定抽屉时关闭其他抽屉（已精简：仅保留纠错/详情）
+  const openDrawer = (drawerName: 'correct' | 'detail') => {
     if (!isLargeScreen) {
       // 小屏设备不需要互斥
       switch (drawerName) {
-        case 'pansou':
-          setShowPansouDialog(true);
-          break;
-        case 'aiChat':
-          setShowAIChat(true);
-          break;
         case 'correct':
           setShowCorrectDialog(true);
           break;
@@ -427,35 +383,11 @@ function PlayPageClient() {
     }
 
     // 大屏设备：关闭其他抽屉
-    setShowPansouDialog(drawerName === 'pansou');
-    setShowAIChat(drawerName === 'aiChat');
     setShowCorrectDialog(drawerName === 'correct');
     setShowDetailPanel(drawerName === 'detail');
   };
 
-  // 检查AI功能是否启用
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const enabled =
-        (window as any).RUNTIME_CONFIG?.AI_ENABLED &&
-        (window as any).RUNTIME_CONFIG?.AI_ENABLE_PLAYPAGE_ENTRY;
-      setAiEnabled(enabled);
-
-      // 加载AI默认消息配置
-      const defaultMsg = (window as any).RUNTIME_CONFIG?.AI_DEFAULT_MESSAGE_WITH_VIDEO;
-      if (defaultMsg) {
-        setAiDefaultMessageWithVideo(defaultMsg);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setNetdiskSearchEnabled(
-        !!(window as any).RUNTIME_CONFIG?.NETDISK_SEARCH_ENABLED
-      );
-    }
-  }, []);
+  // （已精简：AI问片/网盘搜索入口移除，不再读取相关开关）
 
   // 网页全屏状态 - 控制导航栏的显示隐藏
   const [isWebFullscreen, setIsWebFullscreen] = useState(false);
@@ -2300,6 +2232,48 @@ function PlayPageClient() {
     return true;
   };
 
+  // 左右双击快退/快进（移动端双击触摸 + 桌面双击，复用方向键步长 seedStepSeconds）
+  const lastSideTapRef = useRef<{ side: 'left' | 'right'; time: number }>({ side: 'left', time: 0 });
+  const sideTapTimerRef = useRef<{ left: ReturnType<typeof setTimeout> | null; right: ReturnType<typeof setTimeout> | null }>({
+    left: null,
+    right: null,
+  });
+  const seekBySide = (side: 'left' | 'right') => {
+    const player = artPlayerRef.current;
+    if (!player) return;
+    const dir = side === 'left' ? -1 : 1;
+    player.currentTime = calculateSeekTime(
+      player.currentTime,
+      player.duration,
+      dir,
+      seekStepSecondsRef.current
+    );
+    player.notice.show = `${dir === 1 ? '快进' : '快退'} ${formatQuickForwardDuration(
+      seekStepSecondsRef.current
+    )}`;
+  };
+  // 触摸：单击延迟 toggle（给双击留 280ms 取消窗口），双击直接 seek
+  const handleSideTouchEnd = (side: 'left' | 'right') => {
+    const player = artPlayerRef.current;
+    if (!player) return;
+    const now = Date.now();
+    const last = lastSideTapRef.current;
+    if (last.side === side && now - last.time < 300) {
+      if (sideTapTimerRef.current[side]) {
+        clearTimeout(sideTapTimerRef.current[side]!);
+        sideTapTimerRef.current[side] = null;
+      }
+      lastSideTapRef.current = { side, time: 0 };
+      seekBySide(side);
+    } else {
+      lastSideTapRef.current = { side, time: now };
+      sideTapTimerRef.current[side] = setTimeout(() => {
+        sideTapTimerRef.current[side] = null;
+        player.toggle();
+      }, 280);
+    }
+  };
+
   const isPlaybackThumbnailDisabled = () => {
     if (typeof window === 'undefined') {
       return true;
@@ -2563,61 +2537,8 @@ function PlayPageClient() {
   // Wake Lock 相关
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
-  // 观影室同步功能
-  const playSync = usePlaySync({
-    artPlayerRef,
-    videoId: currentId || '',  // 使用 currentId 状态而不是 searchParams
-    videoName: videoTitle || detail?.title || '正在加载...',
-    videoYear: videoYear || detail?.year || '',
-    searchTitle: searchTitle || '',
-    currentEpisode: currentEpisodeIndex + 1,
-    currentSource: currentSource || '',
-    videoUrl: videoUrl || '',
-    playerReady: playerReady,  // 传递播放器就绪状态
-  });
-
-  // 观影室：一键创建房间（未加入房间时显示入口）
-  const watchRoomContext = useWatchRoomContextSafe();
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-
-  const handleCreateWatchRoom = async () => {
-    const watchRoom = watchRoomContext;
-    if (!watchRoom || !watchRoom.isConnected) {
-      setToast({
-        message: '观影室服务未连接',
-        type: 'error',
-        duration: 3000,
-        onClose: () => setToast(null),
-      });
-      return;
-    }
-
-    setIsCreatingRoom(true);
-    try {
-      const room = await watchRoom.createRoom({
-        name: (videoTitle || detail?.title || '一起看').slice(0, 50),
-        description: '',
-        isPublic: false,
-        roomType: 'sync',
-        userName: authInfo?.username || '游客',
-      });
-      setToast({
-        message: `观影室已创建，房间号：${room.id}，快邀请好友加入吧`,
-        type: 'success',
-        duration: 5000,
-        onClose: () => setToast(null),
-      });
-    } catch (error: any) {
-      setToast({
-        message: error?.message || '创建观影室失败',
-        type: 'error',
-        duration: 3000,
-        onClose: () => setToast(null),
-      });
-    } finally {
-      setIsCreatingRoom(false);
-    }
-  };
+  // 观影室同步功能（已移除：保留同形桩，避免播放控制逻辑大面积改动）
+  const playSync = { isInRoom: false, shouldDisableControls: false };
 
   // -----------------------------------------------------------------------------
   // 工具函数（Utils）
@@ -9211,11 +9132,7 @@ function PlayPageClient() {
         artPlayerRef.current.on('video:ratechange', () => {
           const currentRate = artPlayerRef.current.playbackRate;
 
-          // 观影室同步来的倍速不写入个人偏好，退出房间后仍使用自己的倍速
-          if (isRemoteRoomRateActive()) {
-            syncPlaybackPitch();
-            return;
-          }
+          // （观影室已移除：不再区分远端同步倍速）
 
           const shouldIgnoreSafariReset =
             isWebkit &&
@@ -9813,9 +9730,8 @@ function PlayPageClient() {
                 return;
               }
 
-              // 观影室房员恢复到房主同步的倍速，其他人恢复到记忆倍速
-              const targetRate =
-                getRoomRemotePlaybackRate() ?? lastPlaybackRateRef.current;
+              // （观影室已移除：统一恢复到记忆倍速）
+              const targetRate = lastPlaybackRateRef.current;
               if (
                 Math.abs(artPlayerRef.current.playbackRate - targetRate) >
                   0.01 &&
@@ -10899,6 +10815,46 @@ function PlayPageClient() {
                   className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
                 ></div>
 
+                {/* 左右双击快退/快进热区（避开顶部与底部控制栏） */}
+                {!isVideoLoading && !videoError && (
+                  <>
+                    <div
+                      onDoubleClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        seekBySide('left');
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        handleSideTouchEnd('left');
+                      }}
+                      title='双击快退'
+                      className='absolute left-[2%] top-[20%] h-[60%] w-[26%] z-10 rounded-lg cursor-pointer group/seek'
+                    >
+                      <span className='absolute left-2 top-1/2 -translate-y-1/2 text-white/0 group-hover/seek:text-white/70 text-sm font-medium select-none transition-colors'>
+                        ◀◀ 快退
+                      </span>
+                    </div>
+                    <div
+                      onDoubleClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        seekBySide('right');
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        handleSideTouchEnd('right');
+                      }}
+                      title='双击快进'
+                      className='absolute right-[2%] top-[20%] h-[60%] w-[26%] z-10 rounded-lg cursor-pointer group/seek'
+                    >
+                      <span className='absolute right-2 top-1/2 -translate-y-1/2 text-white/0 group-hover/seek:text-white/70 text-sm font-medium select-none transition-colors'>
+                        快进 ▶▶
+                      </span>
+                    </div>
+                  </>
+                )}
+
                 {/* 换源加载蒙层 */}
                 {(isVideoLoading || videoError) && (
                   <div className='absolute inset-0 bg-black/85 backdrop-blur-sm rounded-xl flex items-center justify-center z-[500] transition-all duration-300'>
@@ -11218,298 +11174,11 @@ function PlayPageClient() {
                           </span>
                         </button>
 
-                        {/* 创建观影室（观影室开启且未加入房间时显示） */}
-                        {watchRoomContext?.isEnabled && watchRoomContext.isConnected && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleCreateWatchRoom();
-                            }}
-                            disabled={isCreatingRoom}
-                            className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-purple-600 dark:border-purple-700 flex-shrink-0 disabled:opacity-60 disabled:cursor-wait'
-                            title='创建观影室'
-                          >
-                            {isCreatingRoom ? (
-                              <Loader2 className='w-4 h-4 flex-shrink-0 text-white animate-spin' />
-                            ) : (
-                              <Users className='w-4 h-4 flex-shrink-0 text-white' />
-                            )}
-                            <span className='hidden lg:inline max-w-0 group-hover:max-w-[120px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-white'>
-                              {isCreatingRoom ? '创建中' : '创建观影室'}
-                            </span>
-                          </button>
-                        )}
+                        {/* （已精简：观影室/转码入口移除） */}
 
-                        {showExternalTranscodeButton && (
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              await handleCreateTranscodeSession();
-                            }}
-                            disabled={isTranscoding}
-                            className={`group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden border flex-shrink-0 ${
-                              isTranscoding
-                                ? 'bg-amber-400 text-white border-amber-400 cursor-wait'
-                                : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 cursor-pointer'
-                            }`}
-                            title='转码播放'
-                          >
-                            {isTranscoding ? (
-                              <Loader2 className='w-4 h-4 flex-shrink-0 text-white animate-spin' />
-                            ) : (
-                              <Router className='w-4 h-4 flex-shrink-0 text-white' />
-                            )}
-                            <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-white'>
-                              {isTranscoding ? '转码中' : '转码'}
-                            </span>
-                          </button>
-                        )}
+                        {/* （已精简：短剧模式/快捷键入口移除） */}
 
-                        {/* 短剧模式：分类名命中短剧时，切到竖屏沉浸播放页
-                            （本地设置禁用竖屏模式、或处于观影室内时不出这个入口） */}
-                        {currentSource &&
-                          currentId &&
-                          !duanjuVerticalDisabled &&
-                          !watchRoomContext?.currentRoom &&
-                          isDuanjuTypeName(detail?.type_name || detail?.class || '') && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                saveCurrentPlayProgress();
-                                const params = new URLSearchParams({
-                                  source: currentSource,
-                                  id: currentId,
-                                  title: videoTitle || detail?.title || '',
-                                });
-                                const y = videoYear || detail?.year;
-                                if (y) params.set('year', y);
-                                if (fileName) params.set('fileName', fileName);
-                                router.push(`/duanju/play?${params.toString()}`);
-                              }}
-                              className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-emerald-400 flex-shrink-0'
-                              title='切换到短剧竖屏模式'
-                              aria-label='切换到短剧竖屏模式'
-                            >
-                              <svg
-                                className='w-4 h-4 flex-shrink-0 text-white'
-                                viewBox='0 0 24 24'
-                                fill='none'
-                                stroke='currentColor'
-                                strokeWidth='2'
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                              >
-                                <rect x='7' y='2' width='10' height='20' rx='2' />
-                                <path d='M12 18h.01' />
-                              </svg>
-                              <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-white'>
-                                短剧模式
-                              </span>
-                            </button>
-                          )}
-
-                        {/* 快捷键说明 */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setShowShortcutDialog(true);
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-500 dark:hover:bg-gray-400 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-500 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950'
-                          title='快捷键说明'
-                          aria-label='查看播放快捷键说明'
-                        >
-                          <Keyboard className='w-4 h-4 flex-shrink-0 text-gray-700 dark:text-gray-200' />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            快捷键
-                          </span>
-                        </button>
-
-                        {/* PotPlayer */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // 如果当前是代理播放模式，使用原始 URL；否则使用当前 videoUrl
-                            let urlToUse = videoUrl;
-                            if (sourceProxyMode && detail?.episodes && currentEpisodeIndex < detail.episodes.length) {
-                              urlToUse = detail.episodes[currentEpisodeIndex];
-                            }
-                            // 使用代理 URL
-                            const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                            const proxyUrl = externalPlayerAdBlock
-                              ? `${window.location.origin}/api/proxy-m3u8?url=${encodeURIComponent(urlToUse)}&source=${encodeURIComponent(currentSource)}${tokenParam}`
-                              : urlToUse;
-                            // URL encode 避免冒号被吃掉
-                            window.open(`potplayer://${proxyUrl}`, '_blank');
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0'
-                          title='PotPlayer'
-                        >
-                          <img
-                            src='/players/potplayer.png'
-                            alt='PotPlayer'
-                            className='w-4 h-4 flex-shrink-0'
-                          />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            PotPlayer
-                          </span>
-                        </button>
-
-                        {/* VLC */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // 如果当前是代理播放模式，使用原始 URL；否则使用当前 videoUrl
-                            let urlToUse = videoUrl;
-                            if (sourceProxyMode && detail?.episodes && currentEpisodeIndex < detail.episodes.length) {
-                              urlToUse = detail.episodes[currentEpisodeIndex];
-                            }
-                            // 使用代理 URL
-                            const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                            const proxyUrl = externalPlayerAdBlock
-                              ? `${window.location.origin}/api/proxy-m3u8?url=${encodeURIComponent(urlToUse)}&source=${encodeURIComponent(currentSource)}${tokenParam}`
-                              : urlToUse;
-                            // URL encode 避免冒号被吃掉
-                            window.open(`vlc://${proxyUrl}`, '_blank');
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0'
-                          title='VLC'
-                        >
-                          <img
-                            src='/players/vlc.png'
-                            alt='VLC'
-                            className='w-4 h-4 flex-shrink-0'
-                          />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            VLC
-                          </span>
-                        </button>
-
-                        {/* MPV */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // 如果当前是代理播放模式，使用原始 URL；否则使用当前 videoUrl
-                            let urlToUse = videoUrl;
-                            if (sourceProxyMode && detail?.episodes && currentEpisodeIndex < detail.episodes.length) {
-                              urlToUse = detail.episodes[currentEpisodeIndex];
-                            }
-                            // 使用代理 URL
-                            const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                            const proxyUrl = externalPlayerAdBlock
-                              ? `${window.location.origin}/api/proxy-m3u8?url=${encodeURIComponent(urlToUse)}&source=${encodeURIComponent(currentSource)}${tokenParam}`
-                              : urlToUse;
-                            // URL encode 避免冒号被吃掉
-                            window.open(`mpv://${proxyUrl}`, '_blank');
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0'
-                          title='MPV'
-                        >
-                          <img
-                            src='/players/mpv.png'
-                            alt='MPV'
-                            className='w-4 h-4 flex-shrink-0'
-                          />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            MPV
-                          </span>
-                        </button>
-
-                        {/* MX Player */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // 如果当前是代理播放模式，使用原始 URL；否则使用当前 videoUrl
-                            let urlToUse = videoUrl;
-                            if (sourceProxyMode && detail?.episodes && currentEpisodeIndex < detail.episodes.length) {
-                              urlToUse = detail.episodes[currentEpisodeIndex];
-                            }
-                            // 使用代理 URL
-                            const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                            const proxyUrl = externalPlayerAdBlock
-                              ? `${window.location.origin}/api/proxy-m3u8?url=${encodeURIComponent(urlToUse)}&source=${encodeURIComponent(currentSource)}${tokenParam}`
-                              : urlToUse;
-                            window.open(
-                              `intent://${proxyUrl}#Intent;package=com.mxtech.videoplayer.ad;S.title=${encodeURIComponent(
-                                videoTitle
-                              )};end`,
-                              '_blank'
-                            );
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0'
-                          title='MX Player'
-                        >
-                          <img
-                            src='/players/mxplayer.png'
-                            alt='MX Player'
-                            className='w-4 h-4 flex-shrink-0'
-                          />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            MX Player
-                          </span>
-                        </button>
-
-                        {/* nPlayer */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // 如果当前是代理播放模式，使用原始 URL；否则使用当前 videoUrl
-                            let urlToUse = videoUrl;
-                            if (sourceProxyMode && detail?.episodes && currentEpisodeIndex < detail.episodes.length) {
-                              urlToUse = detail.episodes[currentEpisodeIndex];
-                            }
-                            // 使用代理 URL
-                            const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                            const proxyUrl = externalPlayerAdBlock
-                              ? `${window.location.origin}/api/proxy-m3u8?url=${encodeURIComponent(urlToUse)}&source=${encodeURIComponent(currentSource)}${tokenParam}`
-                              : urlToUse;
-                            window.open(`nplayer-${proxyUrl}`, '_blank');
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0'
-                          title='nPlayer'
-                        >
-                          <img
-                            src='/players/nplayer.png'
-                            alt='nPlayer'
-                            className='w-4 h-4 flex-shrink-0'
-                          />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            nPlayer
-                          </span>
-                        </button>
-
-                        {/* IINA */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // 如果当前是代理播放模式，使用原始 URL；否则使用当前 videoUrl
-                            let urlToUse = videoUrl;
-                            if (sourceProxyMode && detail?.episodes && currentEpisodeIndex < detail.episodes.length) {
-                              urlToUse = detail.episodes[currentEpisodeIndex];
-                            }
-                            // 使用代理 URL
-                            const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                            const proxyUrl = externalPlayerAdBlock
-                              ? `${window.location.origin}/api/proxy-m3u8?url=${encodeURIComponent(urlToUse)}&source=${encodeURIComponent(currentSource)}${tokenParam}`
-                              : urlToUse;
-                            window.open(
-                              `iina://weblink?url=${encodeURIComponent(
-                                proxyUrl
-                              )}`,
-                              '_blank'
-                            );
-                          }}
-                          className='group relative flex items-center justify-center gap-1 w-8 h-8 lg:w-auto lg:h-auto lg:px-2 lg:py-1.5 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-xs font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer overflow-hidden border border-gray-300 dark:border-gray-600 flex-shrink-0'
-                          title='IINA'
-                        >
-                          <img
-                            src='/players/iina.png'
-                            alt='IINA'
-                            className='w-4 h-4 flex-shrink-0'
-                          />
-                          <span className='hidden lg:inline max-w-0 group-hover:max-w-[100px] overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out text-gray-700 dark:text-gray-200'>
-                            IINA
-                          </span>
-                        </button>
+                                                {/* （已精简：外部播放器组移除，保留复制链接/App跳转） */}
                       </div>
 
                       {/* 去广告开关 */}
@@ -11548,103 +11217,7 @@ function PlayPageClient() {
                         </span>
                       </button>
 
-                      {/* 鸿蒙 HLS.js 开关：关闭后使用原生 HLS，便于浏览器投屏 */}
-                      {isHarmonyOS && isHlsPlaybackUrl(videoUrl) && (
-                        <button
-                          type='button'
-                          onClick={() =>
-                            switchHarmonyHlsPlaybackMode(
-                              harmonyHlsPlaybackMode === 'hlsjs'
-                                ? 'native'
-                                : 'hlsjs'
-                            )
-                          }
-                          aria-pressed={harmonyHlsPlaybackMode === 'hlsjs'}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer border flex-shrink-0 ${harmonyHlsPlaybackMode === 'hlsjs'
-                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-blue-400'
-                            : 'bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
-                            }`}
-                          title={
-                            harmonyHlsPlaybackMode === 'hlsjs'
-                              ? 'HLS.js 已开启，点击切换为原生 HLS'
-                              : 'HLS.js 已关闭，当前使用原生 HLS'
-                          }
-                        >
-                          <svg
-                            className='w-4 h-4 flex-shrink-0'
-                            fill='none'
-                            stroke='currentColor'
-                            viewBox='0 0 24 24'
-                          >
-                            {harmonyHlsPlaybackMode === 'hlsjs' ? (
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth='2'
-                                d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-                              />
-                            ) : (
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth='2'
-                                d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
-                              />
-                            )}
-                          </svg>
-                          <span className='whitespace-nowrap'>HLS.js</span>
-                        </button>
-                      )}
-
-                      {/* 网盘挂载原生 HLS 开关：关闭 HLS.js 使用浏览器原生 HLS 直连，更快且无需代理/去广告 */}
-                      {isNetdiskMountSource(currentSource) &&
-                        supportsNativeHls &&
-                        isHlsPlaybackUrl(videoUrl) && (
-                          <button
-                            type='button'
-                            onClick={() =>
-                              switchNetdiskHlsPlaybackMode(
-                                netdiskHlsPlaybackMode === 'native'
-                                  ? 'hlsjs'
-                                  : 'native'
-                              )
-                            }
-                            aria-pressed={netdiskHlsPlaybackMode === 'native'}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer border flex-shrink-0 ${netdiskHlsPlaybackMode === 'native'
-                              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white border-emerald-400'
-                              : 'bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
-                              }`}
-                            title={
-                              netdiskHlsPlaybackMode === 'native'
-                                ? '原生 HLS 已开启（直连网盘，最快），点击切换为 HLS.js'
-                                : '原生 HLS 已关闭（当前使用 HLS.js），点击切换为原生直连'
-                            }
-                          >
-                            <svg
-                              className='w-4 h-4 flex-shrink-0'
-                              fill='none'
-                              stroke='currentColor'
-                              viewBox='0 0 24 24'
-                            >
-                              {netdiskHlsPlaybackMode === 'native' ? (
-                                <path
-                                  strokeLinecap='round'
-                                  strokeLinejoin='round'
-                                  strokeWidth='2'
-                                  d='M13 10V3L4 14h7v7l9-11h-7z'
-                                />
-                              ) : (
-                                <path
-                                  strokeLinecap='round'
-                                  strokeLinejoin='round'
-                                  strokeWidth='2'
-                                  d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
-                                />
-                              )}
-                            </svg>
-                            <span className='whitespace-nowrap'>原生HLS</span>
-                          </button>
-                        )}
+                                            {/* （已精简：HLS/原生切换移除） */}
                     </div>
                   </div>
                 </div>
@@ -11723,32 +11296,7 @@ function PlayPageClient() {
                     >
                       <FavoriteIcon filled={favorited} />
                     </button>
-                    {/* 网盘搜索按钮 */}
-                    {netdiskSearchEnabled && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDrawer('pansou');
-                        }}
-                        className='flex-shrink-0 hover:opacity-80 transition-opacity'
-                        title='搜索网盘资源'
-                      >
-                        <Cloud className='h-6 w-6 text-gray-700 dark:text-gray-300' />
-                      </button>
-                    )}
-                    {/* AI问片按钮 */}
-                    {aiEnabled && detail && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDrawer('aiChat');
-                        }}
-                        className='flex-shrink-0 hover:opacity-80 transition-opacity'
-                        title='AI问片'
-                      >
-                        <Sparkles className='h-6 w-6 text-gray-700 dark:text-gray-300' />
-                      </button>
-                    )}
+                    {/* （已精简：网盘搜索/AI问片按钮移除） */}
                     {/* 详情按钮 */}
                     {detail && (
                       <button
@@ -11947,55 +11495,7 @@ function PlayPageClient() {
               </div>
             </div>
 
-            {/* 推荐区域 */}
-            <SmartRecommendations
-              doubanId={videoDoubanId !== 0 ? videoDoubanId : undefined}
-              videoTitle={videoTitle}
-            />
-
-            {/* 豆瓣评论区域 */}
-            {videoDoubanId !== 0 && enableComments && (
-              <div className='mt-6 -mx-3 md:mx-0 md:px-4'>
-                <div className='bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden'>
-                  {/* 标题 */}
-                  <div className='px-3 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700'>
-                    <h3 className='text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2'>
-                      <svg className='w-5 h-5' fill='currentColor' viewBox='0 0 24 24'>
-                        <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z' />
-                      </svg>
-                      豆瓣评论
-                    </h3>
-                  </div>
-
-                  {/* 评论内容 */}
-                  <div className='p-3 md:p-6'>
-                    <DoubanComments doubanId={videoDoubanId} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* AI评论区域 */}
-            {videoTitle && enableAIComments && (
-              <div className='mt-6 -mx-3 md:mx-0 md:px-4'>
-                <div className='bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl border border-blue-200/50 dark:border-blue-700/50 overflow-hidden'>
-                  {/* 标题 */}
-                  <div className='px-3 md:px-6 py-4 border-b border-blue-200 dark:border-blue-700'>
-                    <h3 className='text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2'>
-                      <svg className='w-5 h-5 text-blue-600 dark:text-blue-400' fill='currentColor' viewBox='0 0 24 24'>
-                        <path d='M13 10V3L4 14h7v7l9-11h-7z' />
-                      </svg>
-                      AI生成评论
-                    </h3>
-                  </div>
-
-                  {/* 评论内容 */}
-                  <div className='p-3 md:p-6'>
-                    <AIComments movieName={videoTitle} />
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* （已精简：推荐/豆瓣评论/AI评论区域移除） */}
           </>
         )}
       </div>
@@ -12051,149 +11551,9 @@ function PlayPageClient() {
         }}
       />
 
-      {/* 快捷键说明弹窗 */}
-      {showShortcutDialog && (
-        <div
-          className='fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm'
-          onClick={() => setShowShortcutDialog(false)}
-        >
-          <div
-            className='relative w-full max-w-lg overflow-hidden rounded-2xl border border-gray-200 bg-white text-gray-900 shadow-2xl shadow-black/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:shadow-black/40'
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            role='dialog'
-            aria-modal='true'
-            aria-labelledby='shortcut-dialog-title'
-          >
-            <div className='absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-green-500/15 via-cyan-500/10 to-transparent pointer-events-none' />
-            <div className='relative flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4 dark:border-gray-700'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-300'>
-                  <Keyboard className='h-5 w-5' />
-                </div>
-                <div>
-                  <h2 id='shortcut-dialog-title' className='text-base font-semibold text-gray-950 dark:text-white'>
-                    播放快捷键
-                  </h2>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowShortcutDialog(false)}
-                className='rounded-lg p-2 text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 cursor-pointer dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'
-                aria-label='关闭快捷键说明'
-              >
-                <X className='h-5 w-5' />
-              </button>
-            </div>
+      {/* （已精简：快捷键说明弹窗移除） */}
 
-            <div className='relative max-h-[70vh] overflow-y-auto px-5 py-4'>
-              <div className='grid gap-3'>
-                {PLAY_SHORTCUT_GROUPS.map((group) => (
-                  <section
-                    key={group.title}
-                    className='rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60'
-                  >
-                    <h3 className='mb-3 text-sm font-medium text-gray-800 dark:text-gray-200'>
-                      {group.title}
-                    </h3>
-                    <div className='space-y-2'>
-                      {group.items.map((item) => (
-                        <div
-                          key={`${group.title}-${item.description}`}
-                          className='flex items-center justify-between gap-4 rounded-lg px-2 py-1.5 transition-colors duration-200 hover:bg-white dark:hover:bg-gray-700/70'
-                        >
-                          <div className='flex flex-wrap items-center gap-1.5'>
-                            {item.keys.map((key, index) => (
-                              <span key={`${item.description}-${key}`} className='flex items-center gap-1.5'>
-                                {index > 0 && (
-                                  <span className='text-xs text-gray-400 dark:text-gray-500'>+</span>
-                                )}
-                                <kbd className='min-w-7 rounded-md border border-gray-300 bg-white px-2 py-1 text-center text-xs font-semibold text-gray-800 shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:shadow-inner dark:shadow-white/5'>
-                                  {key}
-                                </kbd>
-                              </span>
-                            ))}
-                          </div>
-                          <span className='text-right text-xs text-gray-600 dark:text-gray-300'>
-                            {item.description}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 网盘搜索弹窗 */}
-      {showPansouDialog && (
-        isLargeScreen ? (
-          <Drawer
-            isOpen={showPansouDialog}
-            onClose={() => setShowPansouDialog(false)}
-            title={`搜索网盘资源: ${detail?.title || ''}`}
-            width='w-[400px]'
-          >
-            <div className='p-4'>
-              <PansouSearch
-                keyword={detail?.title || ''}
-                triggerSearch={showPansouDialog}
-              />
-            </div>
-          </Drawer>
-        ) : (
-          <div
-            className='fixed inset-0 z-[10000] flex items-center justify-center bg-black/50'
-            onClick={() => setShowPansouDialog(false)}
-          >
-            <div
-              className='relative w-full max-w-4xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900 rounded-lg shadow-xl m-4'
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 弹窗头部 */}
-              <div className='sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900'>
-                <h2 className='text-xl font-bold text-gray-900 dark:text-gray-100'>
-                  搜索网盘资源: {detail?.title || ''}
-                </h2>
-                <button
-                  onClick={() => setShowPansouDialog(false)}
-                  className='p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors'
-                >
-                  <X className='h-5 w-5 text-gray-600 dark:text-gray-400' />
-                </button>
-              </div>
-
-              {/* 弹窗内容 */}
-              <div className='p-4'>
-                <PansouSearch
-                  keyword={detail?.title || ''}
-                  triggerSearch={showPansouDialog}
-                />
-              </div>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* AI问片面板 */}
-      {aiEnabled && detail && (
-        <AIChatPanel
-          isOpen={showAIChat}
-          onClose={() => setShowAIChat(false)}
-          context={{
-            title: detail.title,
-            year: detail.year,
-            douban_id: videoDoubanId !== 0 ? videoDoubanId : undefined,
-            currentEpisode: currentEpisodeIndex + 1,
-          }}
-          welcomeMessage={aiDefaultMessageWithVideo ? aiDefaultMessageWithVideo.replace('{title}', detail.title || '') : `想了解《${detail.title}》的更多信息吗？我可以帮你查询剧情、演员、评价等。`}
-          useDrawer={isLargeScreen}
-          drawerWidth='w-[400px]'
-        />
-      )}
+      {/* （已精简：网盘搜索弹窗/AI问片面板/快捷键说明移除） */}
 
       {/* 纠错弹窗 - 仅小雅源显示 */}
       {detail && detail.source === 'xiaoya' && (
