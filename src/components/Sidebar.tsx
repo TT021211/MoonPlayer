@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clapperboard, Clover, Container, Film, Flame, Globe, Heart, Home, Menu, Search, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
+import { Blend, Cat, Clapperboard, Clover, Container, Film, Flame, Globe, Heart, Home, Menu, Search, SquarePlay, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -165,6 +165,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       href: '/aqdlt',
     },
     {
+      icon: SquarePlay,
+      label: 'HoHoJ',
+      href: '/hohoj',
+    },
+    {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
@@ -210,6 +215,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
         icon: Heart,
         label: '爱情岛',
         href: '/aqdlt',
+      },
+      {
+        icon: SquarePlay,
+        label: 'HoHoJ',
+        href: '/hohoj',
       },
       {
         icon: Clover,
