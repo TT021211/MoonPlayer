@@ -8,7 +8,9 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import { HANIME_STATE_KEY } from '@/lib/hanime.client';
 import { SearchResult } from '@/lib/types';
 
-import CapsuleSwitch from '@/components/CapsuleSwitch';
+import CategoryBreadcrumb, {
+  buildCrumbGroups,
+} from '@/components/CategoryBreadcrumb';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
@@ -22,6 +24,7 @@ interface HanimeCategory {
   id: string;
   name: string;
   pid: string;
+  group?: string;
 }
 
 interface HanimeSnapshot {
@@ -345,17 +348,15 @@ function HanimePageClient() {
           </div>
         )}
 
-        {/* 分类 */}
+        {/* 分类（面包屑：点一下展开分组） */}
         {selectedSource && !searching && categories.length > 1 && (
           <div className='max-w-4xl mx-auto mb-8'>
             <div className='text-xs text-gray-500 dark:text-gray-400 mb-2 px-4'>分类</div>
-            <div className='flex px-4'>
-              <CapsuleSwitch
-                options={categories.map((c) => ({ label: c.name, value: c.id }))}
-                active={selectedCategory}
-                onChange={handleCategoryChange}
-              />
-            </div>
+            <CategoryBreadcrumb
+              groups={buildCrumbGroups(categories)}
+              selectedId={selectedCategory}
+              onChange={handleCategoryChange}
+            />
           </div>
         )}
 

@@ -14,6 +14,7 @@ interface CmsClassResponse {
     type_id: string | number;
     type_name: string;
     type_pid?: string | number;
+    group?: string;
   }>;
 }
 
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
             id: String(item.type_id),
             name: item.type_name || String(item.type_id),
             pid: String(item.type_pid ?? 0),
+            group: item.group || '',
           }));
         }
       }

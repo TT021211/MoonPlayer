@@ -74,8 +74,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 女优作品通道：categoryId=`model-<mid>` 时走网关 ac=model-videos
+    const modelMatch = /^model-(\d+)$/.exec(categoryId);
     const response = await fetch(
-      `${targetSource.api}?ac=videolist&t=${encodeURIComponent(categoryId)}&pg=${page}`,
+      modelMatch
+        ? `${targetSource.api}?ac=model-videos&mid=${encodeURIComponent(modelMatch[1])}&pg=${page}`
+        : `${targetSource.api}?ac=videolist&t=${encodeURIComponent(categoryId)}&pg=${page}`,
       // 中转站（hohoj）一次抓取 15~60 秒，超时设 120 秒；直连站 10 秒足够
       { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(120000) }
     );

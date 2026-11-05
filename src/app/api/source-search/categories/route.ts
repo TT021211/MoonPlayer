@@ -12,6 +12,7 @@ interface CmsClassResponse {
     type_id: string | number;
     type_pid?: string | number;
     type_name: string;
+    group?: string;
   }>;
 }
 
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
         name: item.type_name,
         // 一级分类 type_pid 为 0，二级分类指向父分类 id
         pid: (item.type_pid ?? 0).toString(),
+        group: (item as { group?: string }).group || '',
       })),
     });
   } catch (error) {

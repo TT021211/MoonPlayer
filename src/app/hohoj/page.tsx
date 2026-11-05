@@ -9,8 +9,17 @@ import { HOHOJ_STATE_KEY } from '@/lib/hohoj.client';
 import { SearchResult } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
+import CategoryBreadcrumb, {
+  buildCrumbGroups,
+} from '@/components/CategoryBreadcrumb';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
+
+interface HohojModel {
+  id: string;
+  name: string;
+  pic: string;
+}
 
 interface HohojSource {
   key: string;
@@ -22,6 +31,7 @@ interface HohojCategory {
   id: string;
   name: string;
   pid: string;
+  group?: string;
 }
 
 interface HohojSnapshot {
@@ -29,6 +39,7 @@ interface HohojSnapshot {
   selectedSource: string;
   categories: HohojCategory[];
   selectedCategory: string;
+  selectedModel: { mid: string; name: string } | null;
   videos: SearchResult[];
   currentPage: number;
   hasMore: boolean;
@@ -72,6 +83,16 @@ function HohojPageClient() {
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  // 女优墙
+  const [view, setView] = useState<'videos' | 'models'>('videos');
+  const [modelOrder, setModelOrder] = useState<'popular' | 'views'>('popular');
+  const [models, setModels] = useState<HohojModel[]>([]);
+  const [modelPage, setModelPage] = useState(1);
+  const [modelsHasMore, setModelsHasMore] = useState(true);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<{ mid: string; name: string } | null>(null);
+  const modelMoreRef = useRef<HTMLDivElement>(null);
+  const seenModelIdsRef = useRef<Set<string>>(new Set());
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [restoreChecked, setRestoreChecked] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -95,6 +116,7 @@ function HohojPageClient() {
       setVideos(snapshot.videos);
       setCurrentPage(snapshot.currentPage);
       setHasMore(snapshot.hasMore);
+      setSelectedModel(snapshot.selectedModel || null);
       setKeyword(snapshot.keyword || '');
       setSearching(!!snapshot.keyword);
     }
@@ -113,9 +135,9 @@ function HohojPageClient() {
   useEffect(() => {
     snapshotRef.current = {
       sources, selectedSource, categories, selectedCategory,
-      videos, currentPage, hasMore, scrollTop: 0, keyword,
+      selectedModel, videos, currentPage, hasMore, scrollTop: 0, keyword,
     };
-  }, [sources, selectedSource, categories, selectedCategory, videos, currentPage, hasMore, keyword]);
+  }, [sources, selectedSource, categories, selectedCategory, selectedModel, videos, currentPage, hasMore, keyword]);
 
   const saveSnapshot = useCallback(() => {
     const snapshot = snapshotRef.current;
@@ -153,6 +175,7 @@ function HohojPageClient() {
     setSelectedSource(key);
     setCategories([]);
     setSelectedCategory('');
+    setSelectedModel(null);
     setCurrentPage(1);
     setVideos([]);
     setHasMore(true);
@@ -184,7 +207,9 @@ function HohojPageClient() {
   }, [restoreChecked, selectedSource]);
 
   const handleCategoryChange = (value: string) => {
+    if (value === selectedCategory) return;
     setSelectedCategory(value);
+    setSelectedModel(null);
     setCurrentPage(1);
     setVideos([]);
     setHasMore(true);
@@ -221,11 +246,99 @@ function HohojPageClient() {
     fetchVideos();
   }, [restoreChecked, selectedSource, selectedCategory, currentPage, searching]);
 
+  // 女优墙列表
+  useEffect(() => {
+    if (!restoreChecked || !selectedSource || view !== 'models') return;
+    const fetchModels = async () => {
+      setIsLoadingModels(true);
+      try {
+        const res = await fetch(`/api/hohoj/models?source=${encodeURIComponent(selectedSource)}&order=${modelOrder}&page=${modelPage}`);
+        const data = await res.json();
+        if (data.code === 200 && Array.isArray(data.data)) {
+          const incoming = (data.data as HohojModel[]).filter((m) => {
+            if (seenModelIdsRef.current.has(m.id)) return false;
+            seenModelIdsRef.current.add(m.id);
+            return true;
+          });
+          setModels((prev) => (modelPage === 1 ? incoming : [...prev, ...incoming]));
+          const pageCount = Number(data.pageCount) || 0;
+          const page = Number(data.page) || modelPage;
+          setModelsHasMore(incoming.length > 0 && (pageCount <= 0 || page < pageCount));
+        }
+      } catch (e) {
+        console.error('Failed to load hohoj models:', e);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+    fetchModels();
+  }, [restoreChecked, selectedSource, view, modelOrder, modelPage]);
+
+  useEffect(() => {
+    if (models.length === 0 || !modelMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && modelsHasMore && !isLoadingModels) {
+          setModelPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '240px 0px', threshold: 0.1 }
+    );
+    observer.observe(modelMoreRef.current);
+    return () => observer.disconnect();
+  }, [models.length, modelsHasMore, isLoadingModels]);
+
+  const handleViewChange = (value: string) => {
+    if (value === 'models') {
+      setView('models');
+      return;
+    }
+    // 切回影片：若正看着女优作品，回到分类浏览
+    setView('videos');
+    if (selectedModel) {
+      setSelectedModel(null);
+      setSelectedCategory(categories[0]?.id || '');
+      setCurrentPage(1);
+      setVideos([]);
+      setHasMore(true);
+      setKeyword('');
+      setSearching(false);
+    }
+  };
+
+  const handleModelOrderChange = (value: string) => {
+    setModelOrder(value === 'views' ? 'views' : 'popular');
+    setModelPage(1);
+    setModels([]);
+    seenModelIdsRef.current = new Set();
+    setModelsHasMore(true);
+  };
+
+  const handleModelSelect = (mid: string, name: string) => {
+    setSelectedModel({ mid, name });
+    setSelectedCategory(`model-${mid}`);
+    setCurrentPage(1);
+    setVideos([]);
+    setHasMore(true);
+    setKeyword('');
+    setSearching(false);
+    setView('videos');
+    scrollPageTo(0);
+  };
+
+  const backToModelWall = () => {
+    setSelectedModel(null);
+    setView('models');
+    scrollPageTo(0);
+  };
+
   // 搜索提交后 currentPage 已置 1 但 searching 翻转时上面 effect 可能用旧 keyword，补一次
   const doSearch = useCallback(() => {
     const kw = searchInputRef.current?.value.trim() ?? '';
     setKeyword(kw);
     setSearching(kw.length > 0);
+    setSelectedModel(null);
+    setView('videos');
     setCurrentPage(1);
     setVideos([]);
     setHasMore(true);
@@ -235,6 +348,7 @@ function HohojPageClient() {
     if (searchInputRef.current) searchInputRef.current.value = '';
     setKeyword('');
     setSearching(false);
+    setSelectedModel(null);
     setCurrentPage(1);
     setVideos([]);
     setHasMore(true);
@@ -345,26 +459,100 @@ function HohojPageClient() {
           </div>
         )}
 
-        {/* 分类 */}
-        {selectedSource && !searching && categories.length > 1 && (
-          <div className='max-w-4xl mx-auto mb-8'>
-            <div className='text-xs text-gray-500 dark:text-gray-400 mb-2 px-4'>分类</div>
-            <div className='flex px-4'>
-              <CapsuleSwitch
-                options={categories.map((c) => ({ label: c.name, value: c.id }))}
-                active={selectedCategory}
-                onChange={handleCategoryChange}
-              />
-            </div>
+        {/* 影片 / 女优切换 */}
+        {selectedSource && (
+          <div className='flex justify-center mt-2 mb-6'>
+            <CapsuleSwitch
+              options={[
+                { label: '影片', value: 'videos' },
+                { label: '女优', value: 'models' },
+              ]}
+              active={view}
+              onChange={handleViewChange}
+            />
           </div>
         )}
 
-        {selectedSource && (
+        {/* 分类（面包屑：点一下展开分组） */}
+        {selectedSource && view === 'videos' && !searching && !selectedModel && categories.length > 1 && (
+          <div className='max-w-4xl mx-auto mb-8'>
+            <div className='text-xs text-gray-500 dark:text-gray-400 mb-2 px-4'>分类</div>
+            <CategoryBreadcrumb
+              groups={buildCrumbGroups(categories)}
+              selectedId={selectedCategory}
+              onChange={handleCategoryChange}
+            />
+          </div>
+        )}
+
+        {/* 女优墙 */}
+        {selectedSource && view === 'models' && (
           <div className='max-w-[95%] mx-auto mt-8'>
-            <div className='mb-4'>
+            <div className='flex px-4 mb-6'>
+              <CapsuleSwitch
+                options={[
+                  { label: '最熱門', value: 'popular' },
+                  { label: '最多觀看', value: 'views' },
+                ]}
+                active={modelOrder}
+                onChange={handleModelOrderChange}
+              />
+            </div>
+            {isLoadingModels && modelPage === 1 ? (
+              <div className='flex justify-center items-center h-40'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
+              </div>
+            ) : models.length === 0 ? (
+              <div className='text-center text-gray-500 py-8 dark:text-gray-400'>暂无内容</div>
+            ) : (
+              <>
+                <div className='grid grid-cols-3 gap-x-2 gap-y-6 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(9rem,_1fr))] sm:gap-x-8'>
+                  {models.map((m) => (
+                    <button
+                      key={m.id}
+                      type='button'
+                      onClick={() => handleModelSelect(m.id, m.name)}
+                      className='flex flex-col items-center gap-2 group cursor-pointer'
+                    >
+                      <img
+                        src={m.pic || '/logo.png'}
+                        alt={m.name}
+                        loading='lazy'
+                        onError={(e) => {
+                          e.currentTarget.src = '/logo.png';
+                        }}
+                        className='w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover bg-gray-100 dark:bg-gray-800 transition-transform group-hover:scale-105'
+                      />
+                      <span className='text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate max-w-full group-hover:text-red-600 dark:group-hover:text-red-400'>
+                        {m.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <div ref={modelMoreRef} className='flex justify-center items-center py-8'>
+                  {isLoadingModels && <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500'></div>}
+                  {!modelsHasMore && models.length > 0 && <span className='text-sm text-gray-500 dark:text-gray-400'>没有更多了</span>}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {selectedSource && view === 'videos' && (
+          <div className='max-w-[95%] mx-auto mt-8'>
+            <div className='mb-4 flex items-center gap-3'>
               <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                {searching ? `搜索：${keyword}` : categories.find((c) => c.id === selectedCategory)?.name || 'HoHoJ列表'}
+                {searching ? `搜索：${keyword}` : selectedModel ? selectedModel.name : categories.find((c) => c.id === selectedCategory)?.name || 'HoHoJ列表'}
               </h2>
+              {selectedModel && !searching && (
+                <button
+                  type='button'
+                  onClick={backToModelWall}
+                  className='rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800'
+                >
+                  ← 返回女优墙
+                </button>
+              )}
             </div>
             {isLoadingVideos && currentPage === 1 ? (
               <div className='flex justify-center items-center h-40'>

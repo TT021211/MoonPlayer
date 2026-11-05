@@ -9,6 +9,9 @@ import { isAnimeCategoryText } from '@/lib/anime-keyword-expr';
 import { SearchResult } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
+import CategoryBreadcrumb, {
+  buildCrumbGroups,
+} from '@/components/CategoryBreadcrumb';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
@@ -22,6 +25,7 @@ interface BrowseCategory {
   id: string;
   name: string;
   pid: string;
+  group?: string;
 }
 
 interface BrowseSnapshot {
@@ -300,6 +304,10 @@ function BrowsePageClient({ initialSource }: { initialSource: string }) {
     }
   };
 
+  // 分组优先（网关带 group 的源：hohoj/aqdlt/hanime），否则沿用 pid 父子两行
+  const hasGroups = categories.some((c) => c.group);
+  const crumbGroups = hasGroups ? buildCrumbGroups(categories) : [];
+
   // 父 / 子两级（pid=0 为父；无 pid 体系时单行展示）
   const parentCats = categories.filter(
     (c) => c.pid === '0' || !categories.some((x) => x.id === c.pid)
@@ -378,7 +386,18 @@ function BrowsePageClient({ initialSource }: { initialSource: string }) {
           )}
         </div>
 
-        {selectedSource && categories.length > 0 && (
+        {selectedSource && categories.length > 0 && hasGroups && (
+          <div className='max-w-4xl mx-auto mb-8'>
+            <div className='text-xs text-gray-500 dark:text-gray-400 mb-2 px-4'>分类</div>
+            <CategoryBreadcrumb
+              groups={crumbGroups}
+              selectedId={selectedCategory}
+              onChange={handleCategoryChange}
+            />
+          </div>
+        )}
+
+        {selectedSource && categories.length > 0 && !hasGroups && (
           <div className='max-w-4xl mx-auto mb-8 space-y-3'>
             <div>
               <div className='text-xs text-gray-500 dark:text-gray-400 mb-2 px-4'>
