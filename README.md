@@ -5,6 +5,10 @@
 </div>
 
 > 🎬 **MoonTVPlus** 是基于 [MoonTV v100](https://github.com/MoonTechLab/LunaTV) 二次开发的增强版影视聚合播放器。它在原版基础上新增了外部播放器支持、视频超分、弹幕系统、评论抓取等实用功能，提供更强大的观影体验。
+>
+> **本 fork（TT021211）是个人精简版**：只保留搜索 / 浏览 / 详情 / 播放 / 收藏 / 下载核心链路，
+> 样式改为 MuteFun（MacCMS MX）风，以下“本 fork 变更”小节为准，上游 README 中已删除功能
+> （观影室 / WebTV / 追番 / 磁力网盘 / 私人影库 / AI / 通知 / 直播 / 漫画 / 短剧等）的章节请忽略。
 
 <div align="center">
 
@@ -19,37 +23,47 @@
 
 ---
 
-## 🎉 相对原版新增内容
+## 🎉 本 fork 变更（2026-11-05，相对上游 MoonTVPlus）
 
-- 🎮 **外部播放器跳转**：支持 PotPlayer、VLC、MPV、MX Player、nPlayer、IINA 等多种外部播放器
-- ✨ **视频超分 (Anime4K)**：使用 WebGPU 技术实现实时视频画质增强（支持 1.5x/2x/3x/4x 超分）
-- 💬 **弹幕系统**：完整的弹幕搜索、匹配、加载功能，支持弹幕设置持久化、弹幕屏蔽
-- 📝 **豆瓣评论抓取**：自动抓取并展示豆瓣电影短评，支持分页加载
-- 🧩 **视频源脚本**：支持通过脚本自定义视频源、搜索、详情与播放解析逻辑（实验性）
-- 🪒**自定义去广告**：你可以自定义你的去广告代码，实现更强力的去广告功能
-- 🚀 **更快更顺滑**：相较原版项目整体速度更快，交互体验更好
-- 🧲 **磁力搜索**：聚合 Mikan、Nyaa、ACG.RIP、动漫花园等站点搜索资源，可对种子做健康检查，并推送至 OpenList 离线下载。
-- 📺 **WebTV**：专为电视大屏设计的操作界面，电视上扫码即可登录，手机浏览器还能化身虚拟遥控器。
-- 📡 **追番订阅**：订阅番剧自动追更，自动识别字幕组与集数，更新后自动入库或下载，还可收到提醒通知。
-- 🎞️ **外挂字幕**：支持加载本地字幕文件，ASS/SSA 特效字幕、PGS 图像字幕均可正确渲染显示。
-- 🤖 **AI 问片**：全站 AI 影视助手，聊着天就能让它帮你找片、查片信息，也有 AI 生成的影片评论可看。
-- 🔔 **消息通知**：站内通知中心统一查看各类消息，追番更新、求片处理结果等还可通过邮件或浏览器推送提醒。
-- 🎭 **观影室**：支持多人同步观影、进度同步、屏幕共享、实时聊天、语音通话等功能。
-- 📥 **M3U8完整下载**：支持浏览器内合并 m3u8 片段下载，也支持下载到本地文件夹并无感播放本地视频。
-- 💾 **服务器离线下载**：支持在服务器端下载视频文件，支持断点续传，提前下载到家秒加载 。
-- 📚 **私人影库**：接入 OpenList、Emby 或小雅，可打造专属私人影库，亦可观看网盘资源。
+### 保留
+
+- ✨ **视频超分 (Anime4K)**：WebGPU 实时画质增强（1.5x/2x/3x/4x），播放器设置里开。
+- 🪒 **自定义去广告**：自定义去广告代码，工具条一键开关。
+- 📥 **M3U8完整下载**：浏览器内合并 m3u8 片段下载。
+- 🧩 **视频源脚本**：自定义视频源/搜索/详情/播放解析（实验性）。
+- 💬 **弹幕加载**：播放页选集内可选弹幕源（弹幕面板、评论区、豆瓣/AI 评论已移除）。
+- 🎞️ **外挂字幕**：本地字幕文件加载，ASS/SSA、PGS 可渲染。
+- 📡 **TVBOX 订阅 / OrionTV**：订阅链接、播放记录同步保留。
+
+### 新增
+
+- 🎨 **MuteFun 风格主题**：浅底 + 红橙主色（`src/app/mutefun-theme.css`）。
+- 👆 **播放器双击快进**：左右 26% 热区双击快退/快进（复用方向键步长，默认 10 秒），单击仍是播放/暂停。
+- 🗂️ **源站浏览（/browse）**：通用自定义源按各站真实 `?ac=list` 分类浏览（父/子两级 + 网格 + 下滑加载，无新 id 自动收敛），导航“源浏览”进入。
+- 🟡 **黄色过滤默认开 + 前台开关**：搜索页“高级”下拉可切换（`?yellowFilter=`，搜索/联想/分类接口全支持）；
+  里番四频道（`/hanime` `/missav` `/aqdlt` `/hohoj`）专属接口 bypass——**部署时请删掉
+  `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`，否则全局过滤永远关闭**。
+- 🏷️ **自定义分类独立开关**：后台分类管理每行可启用/禁用，即时生效（`refineConfig` 不丢 `disabled` 态）。
+
+### 已删除（路由 + API + 组件整组移除，`admin` 后台配置页未动）
+
+观影室（含 WatchRoomProvider/hooks/socket/DO）、WebTV（`/tv`）、电视/网络直播、追番订阅（含豆瓣每日放送）、
+磁力搜索（ACG）/网盘搜索（Pansou）/源站寻片旧页、短剧、漫画/书/音乐、私人影库入口、AI 问片与 AI/豆瓣评论、
+通知中心（含邮件/推送设置）、服务器离线下载、6 外部播放器按钮（PotPlayer/VLC/MPV/MX/nPlayer/IINA）、
+转码/快捷键/HLS 切换入口、播放页推荐区。
 
 ## ✨ 功能特性
 
-- 🔍 **多源聚合搜索**：一次搜索立刻返回全源结果。
+- 🔍 **多源聚合搜索**：一次搜索立刻返回全源结果（默认开黄色过滤，前台可关）。
+- 🗂️ **源站浏览**：`/browse` 按源真实分类浏览，分类取自各源 `?ac=list` 同步。
 - 📄 **丰富详情页**：支持剧集列表、演员、年份、简介等完整信息展示。
-- ▶️ **流畅在线播放**：集成 HLS.js & ArtPlayer。
+- ▶️ **流畅在线播放**：集成 HLS.js & ArtPlayer，左右双击快进。
 - ❤️ **收藏 + 继续观看**：支持 Kvrocks/Redis/Upstash 存储，多端同步进度。
 - 📱 **PWA**：离线缓存、安装到桌面/主屏，移动端原生体验。
 - 🌗 **响应式布局**：桌面侧边栏 + 移动底部导航，自适应各种屏幕尺寸。
 - 👿 **智能去广告**：自动跳过视频中的切片广告，更可以自定义你的去广告代码以增强去广告功能。
 
-### 注意：部署后项目为空壳项目，无内置播放源和直播源，需要自行收集
+### 注意：部署后项目为空壳项目，无内置播放源，需要自行收集（见[自建源接入](#自建源接入-maccms-hub联动)）
 
 <details>
   <summary>点击查看项目截图</summary>
@@ -65,10 +79,10 @@
 
 - [技术栈](#技术栈)
 - [部署](#部署)
+- [自建源接入（maccms-hub 联动）](#自建源接入maccms-hub联动)
 - [配置文件](#配置文件)
 - [自动更新](#自动更新)
 - [环境变量](#环境变量)
-- [外部观影室服务器部署](#外部观影室服务器部署)
 - [弹幕后端部署](#弹幕后端部署)
 - [超分功能说明](#超分功能说明)
 - [AndroidTV 使用](#androidtv-使用)
@@ -425,6 +439,24 @@ volumes:
 
 > **指定运行 UID/GID**：容器默认以 `1001:1001`（`nextjs` 用户）运行。可通过 `PUID` / `PGID` 环境变量指定容器进程运行时使用的用户/组 ID。挂载宿主机目录时建议将其设为宿主机目录的属主 UID/GID，容器启动时会自动调整进程属主并修正 `/data`、`/app/.data` 等数据目录的属主，避免权限问题。
 
+## 自建源接入（maccms-hub 联动）
+
+本 fork 配合自建采集网关 [`maccms-hub`](https://github.com/TT021211/maccms-hub) 使用，
+把刮削站实时转成 MacCMS V10 `provide/vod` 接口。网关侧详细交接见该仓库 `README.md`。
+
+```
+源管理 → 自定义源（示例，内网地址按实际部署改）：
+  key: hanime1, api: http://maccms-hub:3001/hanime1/api.php/provide/vod
+  key: missav,  api: http://maccms-hub:3001/missav/api.php/provide/vod   + 开 proxyMode
+  key: aqdlt,   api: http://maccms-hub:3001/aqdlt/api.php/provide/vod     + 开 proxyMode
+  key: hohoj,   api: http://maccms-hub:3001/hohoj/api.php/provide/vod
+```
+
+- 四个 R18 频道（`/hanime` `/missav` `/aqdlt` `/hohoj`）走专属接口，不受黄色过滤影响；
+  通用自定义源走 `/browse` 页浏览（分类取自各源真实 `?ac=list`，受黄色过滤）。
+- missav/aqdlt 必须开该源的 proxyMode（上游 Referer/CORS 限制）。
+- **不要再设 `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`**，否则全局黄滤关闭。
+
 ## 配置文件
 
 完成部署后为空壳应用，无播放源，需要站长在管理后台的配置文件设置中填写配置文件，本版本已不支持无数据库运行。
@@ -503,7 +535,7 @@ dockge/komodo 等 docker compose UI 也有自动更新功能
 | NEXT_PUBLIC_DOUBAN_PROXY                 | 自定义豆瓣数据代理 URL                                       | url prefix                  | (空)                                                         |
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE      | 豆瓣图片代理类型                                             | 见下方                      | direct                                                       |
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY           | 自定义豆瓣图片代理 URL                                       | url prefix                  | (空)                                                         |
-| NEXT_PUBLIC_DISABLE_YELLOW_FILTER        | 关闭色情内容过滤                                             | true/false                  | false                                                        |
+| NEXT_PUBLIC_DISABLE_YELLOW_FILTER        | 关闭色情内容过滤（本 fork 请保持 false/不设；R18 四频道不受影响） | true/false                  | false                                                        |
 | NEXT_PUBLIC_FLUID_SEARCH                 | 是否开启搜索接口流式输出                                     | true/ false                 | true                                                         |
 | NEXT_PUBLIC_PROXY_M3U8_TOKEN             | M3U8 代理 API 鉴权 Token（外部播放器跳转时的鉴权token，不填为无鉴权） | 任意字符串                  | (空)                                                         |
 | NEXT_PUBLIC_DANMAKU_CACHE_EXPIRE_MINUTES | 弹幕缓存失效时间（分钟数，设为 0 时不缓存）                  | 0 或正整数                  | 4320（3天）                                                  |
@@ -585,34 +617,10 @@ NEXT_PUBLIC_VOICE_CHAT_STRATEGY 选项解释：
 - webrtc-fallback：使用 WebRTC P2P 连接，失败时自动回退到服务器中转（推荐）
 - server-only：仅使用服务器中转（适用于无法建立 P2P 连接的网络环境）
 
-### 外部观影室服务器部署
+### 观影室（本 fork 已移除）
 
-如果您在 Vercel 等无法运行 WebSocket 服务器的平台部署，或希望将观影室服务器独立部署，可以使用外部观影室服务器。
-
-推荐使用由 [tgs9915](https://github.com/tgs9915) 开发的 [watch-room-server](https://github.com/tgs9915/watch-room-server) 项目进行部署。
-
-**配置步骤：**
-
-1. 按照 [watch-room-server](https://github.com/tgs9915/watch-room-server) 的文档部署外部服务器
-
-2. 在 MoonTVPlus 中设置以下环境变量：
-
-   ```env
-   WATCH_ROOM_ENABLED=true
-   WATCH_ROOM_SERVER_TYPE=external
-   WATCH_ROOM_EXTERNAL_SERVER_URL=wss://your-watch-room-server.com
-   WATCH_ROOM_EXTERNAL_SERVER_AUTH=your_secure_token
-   ```
-
-3. （可选）如果多个应用共用同一个外部观影室服务器，为每个应用设置不同的隔离 ID（随机长字符串），使各应用的房间相互隔离：
-
-   ```env
-   WATCH_ROOM_EXTERNAL_APP_ID=your_random_app_id
-   ```
-
-4. 重启应用即可使用外部观影室服务器
-
-
+观影室功能已整组删除（页面 / API / 组件 / Cloudflare DO），`WATCH_ROOM_*` 环境变量不再生效，
+`cloudflare-worker.ts` 也不再导出 `WatchRoomHub`。
 
 ## 弹幕后端部署
 
