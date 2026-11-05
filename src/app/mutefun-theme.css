@@ -73,17 +73,18 @@ div.group[class*='overflow-hidden'] {
   max-height: 460px !important;
   margin: 14px 0 6px 0 !important;
 }
-div.group button[class*='bg-gray-500'] {
+/* 立即播放 CTA（bg-gray-500/30 为其独有 token，避免误伤 hover:bg-gray-500 的按钮） */
+div.group button[class*='bg-gray-500/30'] {
   background: var(--mutefun-gradient) !important;
   color: #fff !important;
   border-radius: 999px !important;
   box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35) !important;
 }
-div.group button[class*='bg-gray-500']:hover {
+div.group button[class*='bg-gray-500/30']:hover {
   filter: brightness(1.05);
   transform: none !important;
 }
-div.group button[class*='bg-gray-500'] svg {
+div.group button[class*='bg-gray-500/30'] svg {
   fill: #fff !important;
   color: #fff !important;
 }
@@ -125,9 +126,9 @@ div[class*='grid'] a.block[class*='truncate']:hover {
   color: var(--mutefun-primary) !important;
 }
 
-/* 5. 胶囊/筛选：浅底 + 选中红渐变 */
-div[class*='bg-gray-200/60'][class*='rounded-full'],
-div[class*='bg-gray-300/80'][class*='rounded-full'] {
+/* 5. 胶囊/筛选：浅底 + 选中红渐变（仅白天模式；夜晚沿用默认深色） */
+html:not(.dark) div[class*='bg-gray-200/60'][class*='rounded-full'],
+html:not(.dark) div[class*='bg-gray-300/80'][class*='rounded-full'] {
   background: #fff !important;
   border: 1px solid var(--mutefun-line) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
@@ -137,16 +138,19 @@ div[class*='bg-gray-300/80'] div[class*='absolute'][class*='bg-white'] {
   background: var(--mutefun-gradient) !important;
   box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3) !important;
 }
-div[class*='bg-gray-200/60'] button[class*='text-gray-900'],
-div[class*='bg-gray-300/80'] button[class*='text-gray-900'] {
+/* 选中态文字纯白。注意：不能用 [class*='text-gray-900'] 定位选中项，
+   因为未选中项的类名里带有 hover:text-gray-900，子串匹配会误伤导致白底白字。
+   用 :not([class*='text-gray-700']) 反选（选中项没有 text-gray-700）。 */
+div[class*='bg-gray-200/60'] button:not([class*='text-gray-700']),
+div[class*='bg-gray-300/80'] button:not([class*='text-gray-700']) {
   color: #fff !important;
 }
-div[class*='bg-white/60'][class*='rounded-2xl'] {
+html:not(.dark) div[class*='bg-white/60'][class*='rounded-2xl'] {
   background: #fff !important;
   border: 1px solid var(--mutefun-line) !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
 }
-h1[class*='text-gray-800'] {
+html:not(.dark) h1[class*='text-gray-800'] {
   color: var(--mutefun-text) !important;
 }
 
@@ -159,11 +163,16 @@ h1[class*='text-gray-800'] {
   background: var(--mutefun-primary) !important;
 }
 
-/* 7. 移动端底部导航：白底 */
+/* 7. 移动端底部导航 */
 @media (max-width: 767px) {
-  div[class*='fixed'][class*='bottom-0'],
-  nav[class*='bottom'] {
+  html:not(.dark) div[class*='fixed'][class*='bottom-0'],
+  html:not(.dark) nav[class*='bottom'] {
     background: rgba(255, 255, 255, 0.96) !important;
     border-top: 1px solid var(--mutefun-line) !important;
+  }
+  .dark div[class*='fixed'][class*='bottom-0'],
+  .dark nav[class*='bottom'] {
+    background: rgba(10, 10, 10, 0.94) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
 }

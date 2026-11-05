@@ -6,3 +6,8 @@ public/screenshot3.png
 
 # Android/TV native app sources are not needed in Docker image builds
 apps/
+
+# 构建机房：依赖由镜像内 pnpm install 重装，本地产物绝不能进上下文
+# （否则会覆盖容器内刚装好的 node_modules，还会把上下文撑到数 GB）
+node_modules
+.next
