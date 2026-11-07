@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(
       `${targetSource.api}?ac=models&order=${order}&pg=${page}`,
-      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(120000) }
+      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(30000) }
     );
     if (!response.ok) throw new Error('获取 hohoj 女优列表失败');
 

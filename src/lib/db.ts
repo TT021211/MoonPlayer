@@ -10,7 +10,6 @@ import {
   MusicV2PlaylistRecord,
 } from './music-v2';
 import {
-  DanmakuFilterConfig,
   Favorite,
   IStorage,
   LocalSettingsSyncRecord,
@@ -1102,31 +1101,6 @@ export class DbManager {
       return (this.storage as any).getAllSkipConfigs(userName);
     }
     return {};
-  }
-
-  // ---------- 弹幕过滤配置 ----------
-  async getDanmakuFilterConfig(
-    userName: string
-  ): Promise<DanmakuFilterConfig | null> {
-    if (typeof (this.storage as any).getDanmakuFilterConfig === 'function') {
-      return (this.storage as any).getDanmakuFilterConfig(userName);
-    }
-    return null;
-  }
-
-  async setDanmakuFilterConfig(
-    userName: string,
-    config: DanmakuFilterConfig
-  ): Promise<void> {
-    if (typeof (this.storage as any).setDanmakuFilterConfig === 'function') {
-      await (this.storage as any).setDanmakuFilterConfig(userName, config);
-    }
-  }
-
-  async deleteDanmakuFilterConfig(userName: string): Promise<void> {
-    if (typeof (this.storage as any).deleteDanmakuFilterConfig === 'function') {
-      await (this.storage as any).deleteDanmakuFilterConfig(userName);
-    }
   }
 
   // ---------- 数据清理 ----------

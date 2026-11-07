@@ -175,7 +175,7 @@ export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
               <p className='text-sm'>暂无收藏内容</p>
             </div>
           ) : (
-            <div className='grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
+            <div className='video-grid px-0 sm:px-2'>
               {favoriteItems.map((item) => (
                 <div key={item.id + item.source} className='w-full'>
                   <VideoCard

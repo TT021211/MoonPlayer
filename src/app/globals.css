@@ -1235,3 +1235,40 @@ html[data-loading-style='grid'] .mtv-err-box {
     transform: scale(0.85);
   }
 }
+
+/* ==================================================================
+   横滑行：子卡片贴齐吸附，避免半张卡停在边缘
+   ================================================================== */
+.scroll-row > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ==================================================================
+   影片栅格：移动端固定 3 列，桌面端按分辨率自动填充
+   sm≥640: 最小 10rem（约5-6列）/ xl≥1280: 9rem（约8-9列）/ 2xl≥1536: 8.5rem（约10-12列）
+   ================================================================== */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 0.5rem;
+  row-gap: 3.5rem;
+}
+@media (min-width: 640px) {
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    column-gap: 2rem;
+    row-gap: 5rem;
+  }
+}
+@media (min-width: 1280px) {
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+}
+@media (min-width: 1536px) {
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    column-gap: 2.25rem;
+  }
+}

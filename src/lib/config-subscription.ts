@@ -1,5 +1,10 @@
-import { isCloudflareEnvironment } from '@/lib/bangumi.server';
 import { safeFetch } from '@/lib/safe-http';
+
+function isCloudflareEnvironment(): boolean {
+  return (
+    process.env.CF_PAGES === '1' || process.env.BUILD_TARGET === 'cloudflare'
+  );
+}
 
 /**
  * 解析拉取配置代理地址：优先使用配置订阅中的值（ConfigSubscribtion.Proxy），

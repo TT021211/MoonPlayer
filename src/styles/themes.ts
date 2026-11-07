@@ -373,6 +373,250 @@ export const builtInThemes = {
 }
 `,
   },
+  obsidian: {
+    name: '曜石影院',
+    description: '纯黑影院风，弱光护眼，暗部细节拉满',
+    color: '#f59e0b',
+    css: `
+/* 浅色模式 */
+:root:not(.dark) {
+  --theme-primary: #b45309;
+  --theme-primary-hover: #92400e;
+  --theme-bg: #f5f1e8;
+  --theme-bg-secondary: #efe9dc;
+  --theme-text: #292524;
+  --theme-text-secondary: #78716c;
+  --theme-border: #d6cfbf;
+}
+
+:root:not(.dark) body {
+  background: linear-gradient(135deg, #f5f1e8 0%, #e7e0d0 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 深色模式 */
+.dark {
+  --theme-primary: #f59e0b;
+  --theme-primary-hover: #d97706;
+  --theme-bg: #000000;
+  --theme-bg-secondary: #141414;
+  --theme-text: #e7e5e4;
+  --theme-text-secondary: #a8a29e;
+  --theme-border: #292524;
+}
+
+.dark body {
+  background: #000000 !important;
+  color: var(--theme-text) !important;
+}
+
+/* 通用样式 */
+[class*="bg-white"]:not(.dark *), [class*="bg-gray-50"]:not(.dark *) {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+.dark [class*="bg-gray-800"], .dark [class*="bg-gray-900"] {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+[class*="border-gray"] {
+  border-color: var(--theme-border) !important;
+}
+
+[class*="text-gray-600"], [class*="text-gray-700"], [class*="text-gray-800"] {
+  color: var(--theme-text-secondary) !important;
+}
+
+.dark [class*="text-gray-"] {
+  color: var(--theme-text-secondary) !important;
+}
+`,
+  },
+  crimson: {
+    name: '绯红剧场',
+    description: '红黑剧场风，主色绯红，观影氛围浓',
+    color: '#e11d48',
+    css: `
+/* 浅色模式 */
+:root:not(.dark) {
+  --theme-primary: #e11d48;
+  --theme-primary-hover: #be123c;
+  --theme-bg: #fff1f2;
+  --theme-bg-secondary: #ffe4e6;
+  --theme-text: #4c0519;
+  --theme-text-secondary: #9f1239;
+  --theme-border: #fecdd3;
+}
+
+:root:not(.dark) body {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 深色模式 */
+.dark {
+  --theme-primary: #fb4d6d;
+  --theme-primary-hover: #e11d48;
+  --theme-bg: #14060a;
+  --theme-bg-secondary: #220a10;
+  --theme-text: #ffe4e6;
+  --theme-text-secondary: #fda4af;
+  --theme-border: #4c0519;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #14060a 0%, #220a10 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 通用样式 */
+[class*="bg-white"]:not(.dark *), [class*="bg-gray-50"]:not(.dark *) {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+.dark [class*="bg-gray-800"], .dark [class*="bg-gray-900"] {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+[class*="border-gray"] {
+  border-color: var(--theme-border) !important;
+}
+
+[class*="text-gray-600"], [class*="text-gray-700"], [class*="text-gray-800"] {
+  color: var(--theme-text-secondary) !important;
+}
+
+.dark [class*="text-gray-"] {
+  color: var(--theme-text-secondary) !important;
+}
+`,
+  },
+  ink_wash: {
+    name: '水墨青瓷',
+    description: '青绿水墨风，淡雅护眼，东方美学',
+    color: '#0d9488',
+    css: `
+/* 浅色模式 */
+:root:not(.dark) {
+  --theme-primary: #0f766e;
+  --theme-primary-hover: #115e59;
+  --theme-bg: #f0fdfa;
+  --theme-bg-secondary: #ccfbf1;
+  --theme-text: #134e4a;
+  --theme-text-secondary: #0f766e;
+  --theme-border: #99f6e4;
+}
+
+:root:not(.dark) body {
+  background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 深色模式 */
+.dark {
+  --theme-primary: #2dd4bf;
+  --theme-primary-hover: #14b8a6;
+  --theme-bg: #04211e;
+  --theme-bg-secondary: #0a2e29;
+  --theme-text: #ccfbf1;
+  --theme-text-secondary: #5eead4;
+  --theme-border: #115e59;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #04211e 0%, #0a2e29 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 通用样式 */
+[class*="bg-white"]:not(.dark *), [class*="bg-gray-50"]:not(.dark *) {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+.dark [class*="bg-gray-800"], .dark [class*="bg-gray-900"] {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+[class*="border-gray"] {
+  border-color: var(--theme-border) !important;
+}
+
+[class*="text-gray-600"], [class*="text-gray-700"], [class*="text-gray-800"] {
+  color: var(--theme-text-secondary) !important;
+}
+
+.dark [class*="text-gray-"] {
+  color: var(--theme-text-secondary) !important;
+}
+`,
+  },
+  midnight_gold: {
+    name: '午夜鎏金',
+    description: '藏蓝底 + 鎏金点缀，轻奢质感',
+    color: '#c9a227',
+    css: `
+/* 浅色模式 */
+:root:not(.dark) {
+  --theme-primary: #92690e;
+  --theme-primary-hover: #75530b;
+  --theme-bg: #faf6ea;
+  --theme-bg-secondary: #f3ead0;
+  --theme-text: #3b2f0b;
+  --theme-text-secondary: #92690e;
+  --theme-border: #e3d3a3;
+}
+
+:root:not(.dark) body {
+  background: linear-gradient(135deg, #faf6ea 0%, #f3ead0 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 深色模式 */
+.dark {
+  --theme-primary: #e3b93e;
+  --theme-primary-hover: #c9a227;
+  --theme-bg: #101325;
+  --theme-bg-secondary: #1a1f38;
+  --theme-text: #f3ead0;
+  --theme-text-secondary: #c9b48a;
+  --theme-border: #2e3560;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #101325 0%, #1a1f38 100%) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 通用样式 */
+[class*="bg-white"]:not(.dark *), [class*="bg-gray-50"]:not(.dark *) {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+.dark [class*="bg-gray-800"], .dark [class*="bg-gray-900"] {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+[class*="border-gray"] {
+  border-color: var(--theme-border) !important;
+}
+
+[class*="text-gray-600"], [class*="text-gray-700"], [class*="text-gray-800"] {
+  color: var(--theme-text-secondary) !important;
+}
+
+.dark [class*="text-gray-"] {
+  color: var(--theme-text-secondary) !important;
+}
+`,
+  },
 };
 
 export type ThemeName = keyof typeof builtInThemes;

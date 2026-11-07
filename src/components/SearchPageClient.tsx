@@ -37,7 +37,6 @@ import {
 import { processImageUrl } from '@/lib/utils';
 import { YELLOW_FILTER_STORAGE_KEY } from '@/lib/yellow';
 
-import { CLOUD_TYPE_NAMES } from '@/components/PansouSearch';
 import ContinueWatching from '@/components/ContinueWatching';
 import ImageViewer from '@/components/ImageViewer';
 import PageLayout from '@/components/PageLayout';
@@ -50,9 +49,8 @@ import VideoCard, { VideoCardHandle } from '@/components/VideoCard';
 import VirtualScrollableGrid from '@/components/VirtualScrollableGrid';
 import { loadTraditionalToSimplifiedConverter } from '@/lib/danmaku/traditional-to-simplified';
 
-const PANSOU_CLOUD_TYPE_OPTIONS = Object.entries(CLOUD_TYPE_NAMES).map(
-  ([value, label]) => ({ value, label })
-);
+const PANSOU_CLOUD_TYPE_OPTIONS: { value: string; label: string }[] = [];
+const CLOUD_TYPE_NAMES: Record<string, string> = {};
 
 type SearchCachePayload = {
   status: 'complete' | 'partial';
@@ -2240,7 +2238,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
                   ) : (
                     (() => {
                       const gridClassName =
-                        'justify-start grid grid-cols-3 gap-x-2 gap-y-14 px-0 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 sm:gap-y-20 sm:px-2';
+                        'justify-start video-grid px-0 sm:px-2';
 
                       const listClassName = 'space-y-4';
 

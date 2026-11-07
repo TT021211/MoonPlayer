@@ -4,7 +4,8 @@
   <img src="public/logo.png" alt="MoonTVPlus Logo" width="120">
 </div>
 
-> 🎬 **MoonTVPlus** 是基于 [MoonTV v100](https://github.com/MoonTechLab/LunaTV) 二次开发的增强版影视聚合播放器。它在原版基础上新增了外部播放器支持、视频超分、弹幕系统、评论抓取等实用功能，提供更强大的观影体验。
+> 🎬 **MoonTVPlus** 是基于 [MoonTV v100](https://github.com/MoonTechLab/LunaTV) 二次开发的增强版影视聚合播放器。它在原版基础上新增了外部播放器支持、视频超分等实用功能，提供更强大的观影体验。
+> 本 fork 已移除弹幕系统（见下“本轮变更”）。
 >
 > **本 fork（TT021211）是个人精简版**：只保留搜索 / 浏览 / 详情 / 播放 / 收藏 / 下载核心链路，
 > 样式改为 MuteFun（MacCMS MX）风，以下“本 fork 变更”小节为准，上游 README 中已删除功能
@@ -28,10 +29,10 @@
 ### 保留
 
 - ✨ **视频超分 (Anime4K)**：WebGPU 实时画质增强（1.5x/2x/3x/4x），播放器设置里开。
-- 🪒 **自定义去广告**：自定义去广告代码，工具条一键开关。
+- 🪒 **自定义去广告**：丢 m3u8 里的广告切片（URL 关键字匹配）+ 自定义去广告代码，工具条一键开关。
+  烧死在画面里的二维码/水印去不掉（见下“已删除/弹幕”备注思路一致：只处理切片，不做像素级）。
 - 📥 **M3U8完整下载**：浏览器内合并 m3u8 片段下载。
 - 🧩 **视频源脚本**：自定义视频源/搜索/详情/播放解析（实验性）。
-- 💬 **弹幕加载**：播放页选集内可选弹幕源（弹幕面板、评论区、豆瓣/AI 评论已移除）。
 - 🎞️ **外挂字幕**：本地字幕文件加载，ASS/SSA、PGS 可渲染。
 - 📡 **TVBOX 订阅 / OrionTV**：订阅链接、播放记录同步保留。
 
@@ -39,31 +40,53 @@
 
 - 🎨 **MuteFun 风格主题**：浅底 + 红橙主色（`src/app/mutefun-theme.css`）。
 - 👆 **播放器双击快进**：左右 26% 热区双击快退/快进（复用方向键步长，默认 10 秒），单击仍是播放/暂停。
-- 🗂️ **源站浏览（/browse）**：通用自定义源按各站真实 `?ac=list` 分类浏览（分组面包屑 + 网格 + 下滑加载，无新 id 自动收敛），导航“源浏览”进入。
 - 👩 **HoHoJ 女优墙**：`/hohoj` 页影片/女优切换，头像圆墙（最熱門/最多觀看＋翻页），点进女优作品流，可返回。
-- 🍞 **分类面包屑**：四个 R18 频道＋`/browse` 统一面包屑（选中路径＋共 N 个分类，点一下按组展开）；小列表自动平铺胶囊。
+- 🍞 **分类面包屑**：三个 R18 频道统一面包屑（选中路径＋共 N 个分类，点一下按组展开）；小列表自动平铺胶囊。
 - 🟡 **黄色过滤默认开 + 前台开关**：搜索页“高级”下拉可切换（`?yellowFilter=`，搜索/联想/分类接口全支持）；
-  里番四频道（`/hanime` `/missav` `/aqdlt` `/hohoj`）专属接口 bypass——**部署时请删掉
+  里番三频道（`/hanime` `/aqdlt` `/hohoj`）专属接口 bypass——**部署时请删掉
   `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`，否则全局过滤永远关闭**。
 - 🏷️ **自定义分类独立开关**：后台分类管理每行可启用/禁用，即时生效（`refineConfig` 不丢 `disabled` 态）。
+- 🗑️ **MissAV 频道下线**（2026-11-07）：`app/missav` + `api/missav` + `lib/missav*` + 网关 `sites/missav.js` 整组删除，
+  导航/代理 Referer 覆盖/后台缓存清理同步摘除；R18 只剩 `/hanime` `/aqdlt` `/hohoj` 三频道。
 
-### 已删除（路由 + API + 组件整组移除，`admin` 后台配置页未动）
+### 本轮变更（2026-11-08）
+
+- 🎨 **新内置风格 4 套**：曜石影院（纯黑+琥珀）/ 绯红剧场（红黑）/ 水墨青瓷（青绿）/ 午夜鎏金（藏蓝+金），
+  后台个性化配置点选即换（共 11 套）。
+- 🎚️ **频道开关**：后台站点配置新增开关组（电影/剧集/动漫/里番/爱情岛/HoHoJ/综艺/自定义/源浏览），
+  关掉的频道不在双端导航展示，直接访问地址不受影响。
+- 🕘 **播放记录入口**：首页“继续观看”段移除，桌面+移动顶栏加历史图标，点击弹全部记录（点条目继续播）。
+- 🗑️ **弹幕整组删除**：播放页加载器/插件/选择器/过滤弹窗/热力图/缓存（约 -1500 行）+ `api/danmaku*` +
+  `lib/danmaku`（繁简转换保留给搜索用）+ 选集弹幕 Tab + 后台弹幕配置 + DB 过滤表 CRUD + 依赖；
+  分集名改走纯 TMDB。注意：去广告与此同理，只处理 m3u8 切片，烧死在画面里的广告去不掉。
+- 🗑️ **源浏览（/browse）下线**：路由+导航入口删除，`/api/source-search` 保留（搜索页源站寻片还用它）。
+- 🃏 **卡片 hover 修复**：整卡放大压邻卡标题 → 只放大图片内层，标题独立容器。
+- 🧱 **分辨率栅格**：`.video-grid` 统一 7 个列表页——移动 3 列，≥640px 最小 10rem，≥1280px 9rem，≥1536px 8.5rem；
+  首页横滑行加贴齐吸附，不再半张卡。
+- 📲 **iOS 全屏默认原生**：非 PWA 下点全屏直进系统播放器，不再弹窗二选一；PWA 下保持自绘全屏。
+- 🔄 **订阅自动更新生效**：后台“自动更新”开关以前没人消费，现 Docker/Node 常驻进程每小时检查、
+  超 12 小时未更新自动拉取→合并→落库；自定义源不受订阅覆盖（同名 key 只覆盖名称/地址）。
+- ⚙️ **设置弹窗加宽**：用户菜单设置弹窗 `max-w-xl` → `max-w-3xl`，高度提到 `92vh`。
+
+### 已删除（路由 + API + 组件整组移除）
 
 观影室（含 WatchRoomProvider/hooks/socket/DO）、WebTV（`/tv`）、电视/网络直播、追番订阅（含豆瓣每日放送）、
 磁力搜索（ACG）/网盘搜索（Pansou）/源站寻片旧页、短剧、漫画/书/音乐、私人影库入口、AI 问片与 AI/豆瓣评论、
-通知中心（含邮件/推送设置）、服务器离线下载、6 外部播放器按钮（PotPlayer/VLC/MPV/MX/nPlayer/IINA）、
-转码/快捷键/HLS 切换入口、播放页推荐区。
+通知中心（含邮件/推送/Telegram 设置）、服务器离线下载、Telegram 登录/绑定、6 外部播放器按钮（PotPlayer/VLC/MPV/MX/nPlayer/IINA）、
+转码/快捷键/HLS 切换入口、播放页推荐区、MissAV 频道（含网关适配器）、弹幕全套（含后端路由/缓存/过滤/热力图/依赖）、
+源浏览（/browse）路由。
+后台同步精简：只留配置文件 / 站点配置 / 注册配置 / 个性化 / 用户管理 / 视频源 / 源脚本 / 分类 / 去广告 / 数据迁移。
 
 ## ✨ 功能特性
 
 - 🔍 **多源聚合搜索**：一次搜索立刻返回全源结果（默认开黄色过滤，前台可关）。
-- 🗂️ **源站浏览**：`/browse` 按源真实分类浏览，分类取自各源 `?ac=list` 同步。
 - 📄 **丰富详情页**：支持剧集列表、演员、年份、简介等完整信息展示。
-- ▶️ **流畅在线播放**：集成 HLS.js & ArtPlayer，左右双击快进。
-- ❤️ **收藏 + 继续观看**：支持 Kvrocks/Redis/Upstash 存储，多端同步进度。
+- ▶️ **流畅在线播放**：集成 HLS.js & ArtPlayer，左右双击快进，iOS 默认原生全屏。
+- ❤️ **收藏 + 继续观看**：支持 Kvrocks/Redis/Upstash 存储，多端同步进度（顶栏历史图标查看全部记录）。
 - 📱 **PWA**：离线缓存、安装到桌面/主屏，移动端原生体验。
-- 🌗 **响应式布局**：桌面侧边栏 + 移动底部导航，自适应各种屏幕尺寸。
-- 👿 **智能去广告**：自动跳过视频中的切片广告，更可以自定义你的去广告代码以增强去广告功能。
+- 🌗 **响应式布局**：桌面侧边栏 + 移动底部导航，分辨率栅格自适应列数。
+- 👿 **智能去广告**：自动跳过 m3u8 中的广告切片，更可以自定义你的去广告代码以增强去广告功能。
+  （画面内烧死的二维码/水印去不掉，只处理切片。）
 
 ### 注意：部署后项目为空壳项目，无内置播放源，需要自行收集（见[自建源接入](#自建源接入-maccms-hub联动)）
 
@@ -85,7 +108,6 @@
 - [配置文件](#配置文件)
 - [自动更新](#自动更新)
 - [环境变量](#环境变量)
-- [弹幕后端部署](#弹幕后端部署)
 - [超分功能说明](#超分功能说明)
 - [AndroidTV 使用](#androidtv-使用)
 - [TVBOX 订阅功能](#tvbox-订阅功能)
@@ -449,14 +471,13 @@ volumes:
 ```
 源管理 → 自定义源（示例，内网地址按实际部署改）：
   key: hanime1, api: http://maccms-hub:3001/hanime1/api.php/provide/vod
-  key: missav,  api: http://maccms-hub:3001/missav/api.php/provide/vod   + 开 proxyMode
   key: aqdlt,   api: http://maccms-hub:3001/aqdlt/api.php/provide/vod     + 开 proxyMode
   key: hohoj,   api: http://maccms-hub:3001/hohoj/api.php/provide/vod
 ```
 
-- 四个 R18 频道（`/hanime` `/missav` `/aqdlt` `/hohoj`）走专属接口，不受黄色过滤影响；
+- 三个 R18 频道（`/hanime` `/aqdlt` `/hohoj`）走专属接口，不受黄色过滤影响；
   通用自定义源走 `/browse` 页浏览（分类取自各源真实 `?ac=list`，受黄色过滤）。
-- missav/aqdlt 必须开该源的 proxyMode（上游 Referer/CORS 限制）。
+- aqdlt 必须开该源的 proxyMode（上游无 CORS 头，浏览器直连被拦）。
 - **不要再设 `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`**，否则全局黄滤关闭。
 
 ## 配置文件
@@ -537,10 +558,9 @@ dockge/komodo 等 docker compose UI 也有自动更新功能
 | NEXT_PUBLIC_DOUBAN_PROXY                 | 自定义豆瓣数据代理 URL                                       | url prefix                  | (空)                                                         |
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE      | 豆瓣图片代理类型                                             | 见下方                      | direct                                                       |
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY           | 自定义豆瓣图片代理 URL                                       | url prefix                  | (空)                                                         |
-| NEXT_PUBLIC_DISABLE_YELLOW_FILTER        | 关闭色情内容过滤（本 fork 请保持 false/不设；R18 四频道不受影响） | true/false                  | false                                                        |
+| NEXT_PUBLIC_DISABLE_YELLOW_FILTER        | 关闭色情内容过滤（本 fork 请保持 false/不设；R18 三频道不受影响） | true/false                  | false                                                        |
 | NEXT_PUBLIC_FLUID_SEARCH                 | 是否开启搜索接口流式输出                                     | true/ false                 | true                                                         |
 | NEXT_PUBLIC_PROXY_M3U8_TOKEN             | M3U8 代理 API 鉴权 Token（外部播放器跳转时的鉴权token，不填为无鉴权） | 任意字符串                  | (空)                                                         |
-| NEXT_PUBLIC_DANMAKU_CACHE_EXPIRE_MINUTES | 弹幕缓存失效时间（分钟数，设为 0 时不缓存）                  | 0 或正整数                  | 4320（3天）                                                  |
 | ENABLE_TV_MODE                           | 是否启用 TV 模式；设为 false 后 /tv 不可访问，且不启动电视遥控 Socket.IO 监听 | true/false                  | true                                                         |
 | ENABLE_TVBOX_SUBSCRIBE                   | 是否启用 TVBOX 订阅功能                                      | true/false                  | false                                                        |
 | TVBOX_SUBSCRIBE_TOKEN                    | TVBOX 订阅 API 访问 Token，如启用TVBOX功能必须设置该项       | 任意字符串                  | (空)                                                         |
@@ -565,8 +585,6 @@ dockge/komodo 等 docker compose UI 也有自动更新功能
 | TMDB_API_KEY                             | TMDB API 密钥                                                | 任意字符串                  | (空)                                                         |
 | TMDB_PROXY                               | TMDB 代理地址                                                | URL                         | (空)                                                         |
 | TMDB_REVERSE_PROXY                       | TMDB 反向代理地址                                            | URL                         | (空)                                                         |
-| DANMAKU_API_BASE                         | 弹幕 API 地址                                                | URL                         | http://localhost:9321                                        |
-| DANMAKU_API_TOKEN                        | 弹幕 API Token                                               | 任意字符串                  | 87654321                                                     |
 | DATA_MIGRATION_CHUNK_SIZE                | 数据迁移批处理大小（控制导入导出时每批处理的用户数量和数据条数） | 正整数                      | 10                                                           |
 | QR_LOGIN_STORE_MODE                      | 电视端扫码登录状态存储模式；serverless环境下多节点内存状态不可靠。 | auto、memory、hybrid、shared | auto                                                         |
 | WEB_PUSH_PROXY                           | Web Push 服务端发送代理地址，用于服务器访问 FCM 等 Push endpoint | HTTP/HTTPS 代理 URL          | (空)                                                         |
@@ -623,19 +641,6 @@ NEXT_PUBLIC_VOICE_CHAT_STRATEGY 选项解释：
 
 观影室功能已整组删除（页面 / API / 组件 / Cloudflare DO），`WATCH_ROOM_*` 环境变量不再生效，
 `cloudflare-worker.ts` 也不再导出 `WatchRoomHub`。
-
-## 弹幕后端部署
-
-要使用弹幕功能，需要额外部署弹幕 API 后端服务。
-
-### 部署步骤
-
-1. 按照[danmu_api](https://github.com/huangxd-/danmu_api.git)教程部署后端
-2. 建议配置SOURCE_ORDER或PLATFORM_ORDER环境变量，默认弹幕源很少
-3. 在管理面板设置后端地址
-
-
-
 
 ##  超分功能说明
 

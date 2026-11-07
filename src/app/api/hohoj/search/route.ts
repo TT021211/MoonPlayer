@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(
       `${targetSource.api}?ac=videolist&wd=${encodeURIComponent(keyword)}&pg=${page}`,
-      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(120000) }
+      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(30000) }
     );
     if (!response.ok) throw new Error('hohoj 搜索失败');
 

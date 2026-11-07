@@ -160,7 +160,6 @@ export default function EpisodeTitleCorrectDialog({
   if (!isOpen) return null;
 
   const disabled = !!correction.disabled;
-  const preferDanmaku = !!correction.preferDanmaku;
   const hasTmdb = typeof correction.tmdbId === 'number';
 
   return createPortal(
@@ -208,33 +207,8 @@ export default function EpisodeTitleCorrectDialog({
 
           {!disabled && (
             <>
-              {/* 弹幕优先（不用搜 TMDB） */}
-              <label className='flex items-start justify-between gap-3 cursor-pointer'>
-                <div className='min-w-0'>
-                  <div className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-                    弹幕优先
-                  </div>
-                  <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-                    直接用弹幕分集名，不搜索、不使用 TMDB。
-                  </p>
-                </div>
-                <SwitchButton
-                  checked={preferDanmaku}
-                  disabled={!videoTitle}
-                  onClick={() =>
-                    update({
-                      preferDanmaku: !preferDanmaku,
-                      // 打开弹幕优先时清掉手动 TMDB 选择
-                      tmdbId: !preferDanmaku ? undefined : correction.tmdbId,
-                      season: !preferDanmaku ? undefined : correction.season,
-                    })
-                  }
-                />
-              </label>
-
               {/* 指定 TMDB */}
-              {!preferDanmaku && (
-                <div className='space-y-2'>
+              <div className='space-y-2'>
                   <div className='text-sm font-medium text-gray-900 dark:text-gray-100'>
                     指定 TMDB 剧集
                   </div>
@@ -270,7 +244,6 @@ export default function EpisodeTitleCorrectDialog({
                     />
                   )}
                 </div>
-              )}
 
               {/* 起始集数 */}
               <div className='space-y-1'>

@@ -922,9 +922,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     return (
       <>
         <div
-          className={`group relative w-full rounded-lg bg-transparent transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] ${
+          className={`relative w-full rounded-lg bg-transparent transition-all duration-300 ease-in-out ${
             isUpcoming ? 'cursor-default' : 'cursor-pointer'
-          } ${showUpcomingInfo ? 'scale-[1.05] z-[500]' : ''}`}
+          }`}
           onClick={handleClick}
           {...longPressProps}
           style={
@@ -966,9 +966,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             return false;
           }}
         >
-          {/* 海报容器：不在外层 overflow-hidden，避免裁切来源数量浮层 */}
+          {/* 海报容器：独立 group，hover 效果只作用于图片区；标题在下方兄弟节点，不共享容器 */}
           <div
-            className={`relative rounded-lg ${
+            className={`group relative rounded-lg ${
               origin === 'live'
                 ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
                 : ''
@@ -987,8 +987,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               return false;
             }}
           >
-            {/* 仅图片层做圆角裁剪 */}
-            <div className='absolute inset-0 overflow-hidden rounded-lg'>
+            {/* 仅图片层做圆角裁剪 + hover 时图片内缩放（不动标题，不压邻卡） */}
+            <div className='absolute inset-0 overflow-hidden rounded-lg transition-transform duration-300 ease-in-out group-hover:scale-[1.03]'>
               {/* 骨架屏 */}
               {!isLoading && !isDirectPlaySource && (
                 <ImagePlaceholder
@@ -2035,7 +2035,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                   }
                 >
                   <span
-                    className='block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out group-hover:text-green-600 dark:group-hover:text-green-400 peer'
+                    className='block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 peer'
                     style={
                       {
                         WebkitUserSelect: 'none',

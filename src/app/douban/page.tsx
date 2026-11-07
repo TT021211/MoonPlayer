@@ -766,7 +766,7 @@ function DoubanPageClient() {
         {/* 内容展示区域 */}
         <div ref={contentRef} className='max-w-[95%] mx-auto mt-8 overflow-visible'>
           {/* 内容网格（已精简：每日放送时刻表移除） */}
-          <div className='justify-start grid grid-cols-3 gap-x-2 gap-y-12 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-x-8 sm:gap-y-20'>
+          <div className='justify-start video-grid px-0 sm:px-2'>
               {loading || !selectorsReady
                 ? // 显示骨架屏
                   skeletonData.map((index) => (

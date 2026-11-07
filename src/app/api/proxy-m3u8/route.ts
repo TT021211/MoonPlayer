@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       origin = `${proto}://${host}`;
     }
 
-    // 获取原始 m3u8 内容
+    // 获取原始 m3u8 内容（15 秒超时，失败由播放器直连兜底）
     const m3u8UrlObj = new URL(m3u8Url);
     const response = await fetch(m3u8Url, {
       headers: {
@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': `${m3u8UrlObj.protocol}//${m3u8UrlObj.host}/`,
       },
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {

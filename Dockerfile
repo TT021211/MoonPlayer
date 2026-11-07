@@ -63,12 +63,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 # 从构建器中复制 start.js
 COPY --from=builder --chown=nextjs:nodejs /app/start.js ./start.js
-# 从构建器中复制自定义 server.js（包含 Socket.IO 支持）
+# 从构建器中复制自定义 server.js（Socket.IO 仅在观影室内置模式启用时使用，默认关闭）
 COPY --from=builder --chown=nextjs:nodejs /app/server.js ./server.js
-# 自定义 server.js 在运行时会 require('./src/lib/tv-remote-hub.js')。
-# Next standalone 只会追踪 Next 应用入口，不会自动包含自定义服务器额外 require 的源文件，
-# 因此需要显式复制该运行时模块，避免生产镜像启动时报 Cannot find module。
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/tv-remote-hub.js ./src/lib/tv-remote-hub.js
+# 从构建器中复制自定义 server.js（Socket.IO 仅在观影室内置模式启用时使用，默认关闭）
 # 从构建器中复制 public 和 .next/static 目录
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

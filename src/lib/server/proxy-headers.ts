@@ -26,13 +26,10 @@ export function buildProxyStreamHeaders(
 
 /**
  * 上游 Referer：默认用被代理 URL 自身（原有行为，大部分源不校验）。
- * 部分源强制校验 Referer 域名（如 MissAV 的 surrit CDN 只认 missav.ai），
- * 这里按源 key 覆盖。不确定的新源先用 curl 测三组
+ * 按源 key 覆盖。不确定的新源先用 curl 测三组
  * （自身/空/上游站）再决定加不加。
  */
-const UPSTREAM_REFERER_OVERRIDE: Record<string, string> = {
-  missav: 'https://missav.ai/',
-};
+const UPSTREAM_REFERER_OVERRIDE: Record<string, string> = {};
 
 export function buildUpstreamReferer(
   source: string | null,

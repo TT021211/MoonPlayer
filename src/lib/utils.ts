@@ -951,6 +951,34 @@ export function cleanHtmlTags(text: string): string {
 }
 
 /**
+ * 去掉标题中用【】包裹的来源标记，返回纯净标题。
+ * （原弹幕源标题清洗逻辑，现用于分集名展示）
+ */
+export function stripTitleSourceMark(title: string | undefined | null): string {
+  if (!title) return '';
+  return title
+    .replace(/【[^】]*】/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * 在移除来源标记的基础上，进一步去掉标题中的「第x集 / 第x话 / 第x話」序号，
+ * 得到用于选集列表展示的纯净分集名。
+ * 若去除后已无实质内容（分集名本身就只是集号），返回空串，调用方可据此降级。
+ */
+export function cleanEpisodeDisplayName(
+  title: string | undefined | null
+): string {
+  const base = stripTitleSourceMark(title);
+  if (!base) return '';
+  return base
+    .replace(/第\s*\d+\s*[集话話]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * 将字符串编码为 Base58
  * @param str 要编码的字符串
  * @returns Base58 编码后的字符串

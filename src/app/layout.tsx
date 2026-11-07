@@ -12,12 +12,12 @@ import { getConfig } from '@/lib/config';
 import { getUserFeatureAccess } from '@/lib/permissions';
 import { listEnabledSourceScripts } from '@/lib/source-script';
 
-import { StartupCacheCleanup } from '../components/DanmakuCacheCleanup';
 import { DownloadBubble } from '../components/DownloadBubble';
 import { DownloadPanel } from '../components/DownloadPanel';
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import RouteScrollReset from '../components/RouteScrollReset';
 import { SiteProvider } from '../components/SiteProvider';
+import StartupCacheCleanup from '../components/StartupCacheCleanup';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { TokenRefreshManager } from '../components/TokenRefreshManager';
 import TopProgressBar from '../components/TopProgressBar';
@@ -81,7 +81,6 @@ export default async function RootLayout({
     process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true';
   let fluidSearch = process.env.NEXT_PUBLIC_FLUID_SEARCH !== 'false';
   let enableComments = false;
-  let danmakuAutoLoadDefault = true;
   let recommendationDataSource = 'Mixed';
   let tmdbApiKey = '';
   let tmdbImageBaseUrl = 'https://image.tmdb.org';
@@ -144,6 +143,9 @@ export default async function RootLayout({
   // 入口开关是本机 cookie，与存储模式无关，所以 localstorage 模式也要注入；
   // getConfig() 有模块级缓存，generateMetadata 里已经调过一次，这里不产生额外读取。
   const specialSourceApis = (await getConfig()).SpecialSourceApis || [];
+  // 频道开关：后台关闭的频道不在导航展示
+  const disabledChannels =
+    (await getConfig()).SiteConfig.DisabledChannels || [];
   let userFeatureAccess =
     storageType === 'localstorage'
       ? await getUserFeatureAccess(process.env.USERNAME || 'localstorage-owner')
@@ -178,7 +180,6 @@ export default async function RootLayout({
     }));
     fluidSearch = config.SiteConfig.FluidSearch;
     enableComments = config.SiteConfig.EnableComments;
-    danmakuAutoLoadDefault = config.SiteConfig.DanmakuAutoLoadDefault !== false;
     recommendationDataSource =
       config.SiteConfig.RecommendationDataSource || 'Mixed';
     tmdbApiKey = config.SiteConfig.TMDBApiKey || '';
@@ -218,26 +219,21 @@ export default async function RootLayout({
     enableOIDCLogin = config.SiteConfig.EnableOIDCLogin || false;
     enableOIDCRegistration = config.SiteConfig.EnableOIDCRegistration || false;
     oidcButtonText = config.SiteConfig.OIDCButtonText || '';
-    telegramLoginEnabled = Boolean(
-      config.TelegramConfig?.enabled &&
-      config.TelegramConfig?.loginEnabled &&
-      (config.TelegramConfig?.botToken || process.env.TELEGRAM_BOT_TOKEN) &&
-      (config.TelegramConfig?.botUsername || process.env.TELEGRAM_BOT_USERNAME)
-    );
-    telegramBotUsername = config.TelegramConfig?.botUsername || process.env.TELEGRAM_BOT_USERNAME || '';
-    // AI配置
-    aiEnabled = config.AIConfig?.Enabled || false;
-    aiEnableHomepageEntry = config.AIConfig?.EnableHomepageEntry || false;
-    aiEnableVideoCardEntry = config.AIConfig?.EnableVideoCardEntry || false;
-    aiEnablePlayPageEntry = config.AIConfig?.EnablePlayPageEntry || false;
-    aiEnableComments = config.AIConfig?.EnableAIComments || false;
-    aiDefaultMessageNoVideo = config.AIConfig?.DefaultMessageNoVideo || '';
-    aiDefaultMessageWithVideo = config.AIConfig?.DefaultMessageWithVideo || '';
-    // 求片功能配置
-    enableMovieRequest = config.SiteConfig.EnableMovieRequest ?? true;
-    // 网络直播功能配置
-    liveEnabled = (config.LiveConfig || []).some((source) => !source.disabled);
-    webLiveEnabled = config.WebLiveEnabled ?? false;
+    telegramLoginEnabled = false;
+    telegramBotUsername = '';
+    // AI/求片/直播/音乐/漫画/电子书已移除：开关恒关
+    aiEnabled = false;
+    aiEnableHomepageEntry = false;
+    aiEnableVideoCardEntry = false;
+    aiEnablePlayPageEntry = false;
+    aiEnableComments = false;
+    aiDefaultMessageNoVideo = '';
+    aiDefaultMessageWithVideo = '';
+    // 求片功能配置（已移除）
+    enableMovieRequest = false;
+    // 网络直播功能配置（已移除）
+    liveEnabled = false;
+    webLiveEnabled = false;
     // 自定义去广告代码版本号
     customAdFilterVersion = config.SiteConfig?.CustomAdFilterVersion || 0;
     // 流量统计配置
@@ -246,18 +242,11 @@ export default async function RootLayout({
     analyticsScriptUrl = config.SiteConfig?.AnalyticsScriptUrl || '';
     analyticsWebsiteId = config.SiteConfig?.AnalyticsWebsiteId || '';
     analyticsCustomScript = config.SiteConfig?.AnalyticsCustomScript || '';
-    // 音乐功能配置
-    musicFeatureEnabled = config.MusicConfig?.Enabled || false;
-    musicProxyEnabled = config.MusicConfig?.ProxyEnabled ?? true;
-    // 漫画功能配置
-    suwayomiEnabled = !!(
-      config.SuwayomiConfig?.Enabled && config.SuwayomiConfig?.ServerURL
-    );
-    // 电子书功能配置
-    const opdsConfig = config.OPDSConfig;
-    // 电子书馆同时支持 OPDS 与 Legado。Legado 源通过订阅单独配置，
-    // 不一定会出现在 OPDS Sources 中；入口应由“启用电子书馆”开关控制。
-    booksEnabled = !!opdsConfig?.Enabled;
+    // 音乐/漫画/电子书功能（已移除，开关恒关）
+    musicFeatureEnabled = false;
+    musicProxyEnabled = false;
+    suwayomiEnabled = false;
+    booksEnabled = false;
     // 高级推荐功能配置：存在已启用视频源脚本时显示
     advancedRecommendationEnabled =
       (await listEnabledSourceScripts()).length > 0;
@@ -304,10 +293,10 @@ export default async function RootLayout({
     DOUBAN_IMAGE_PROXY_TYPE: doubanImageProxyType,
     DOUBAN_IMAGE_PROXY: doubanImageProxy,
     DISABLE_YELLOW_FILTER: disableYellowFilter,
+    DISABLED_CHANNELS: disabledChannels,
     CUSTOM_CATEGORIES: customCategories,
     FLUID_SEARCH: fluidSearch,
     EnableComments: enableComments,
-    DANMAKU_AUTO_LOAD_DEFAULT: danmakuAutoLoadDefault,
     RecommendationDataSource: recommendationDataSource,
     TMDB_IMAGE_BASE_URL: tmdbImageBaseUrl,
     BANGUMI_DATA_SOURCE: bangumiDataSource,
@@ -446,6 +435,7 @@ export default async function RootLayout({
           <TopProgressBar />
           <RouteScrollReset />
           <TokenRefreshManager />
+          <StartupCacheCleanup />
           <SiteProvider
             siteName={siteName}
             announcement={announcement}
@@ -453,7 +443,6 @@ export default async function RootLayout({
             tmdbApiKey={tmdbApiKey}
           >
             <DownloadProvider>
-                <StartupCacheCleanup />
                 {children}
                 <GlobalErrorIndicator />
                 <DownloadBubble />

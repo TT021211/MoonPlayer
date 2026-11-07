@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     try {
       const response = await fetch(`${targetSource.api}?ac=list`, {
         headers: API_CONFIG.search.headers,
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000),
       });
       if (response.ok) {
         const data = parseJsonLosslessIntegers<CmsClassResponse>(await response.text());

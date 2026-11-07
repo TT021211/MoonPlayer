@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
       TVModeEnabled: process.env.ENABLE_TV_MODE !== 'false',
       WatchRoom: watchRoomConfig,
       EnableOfflineDownload: process.env.NEXT_PUBLIC_ENABLE_OFFLINE_DOWNLOAD === 'true',
-      DanmakuAutoLoadDefault: true,
       EnableTelegramLogin: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME && process.env.TELEGRAM_LOGIN_ENABLED !== 'false'),
       TelegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || '',
     });
@@ -62,14 +61,8 @@ export async function GET(request: NextRequest) {
     EnableOIDCLogin: config.SiteConfig.EnableOIDCLogin || false,
     EnableOIDCRegistration: config.SiteConfig.EnableOIDCRegistration || false,
     OIDCButtonText: config.SiteConfig.OIDCButtonText || '',
-    EnableTelegramLogin: Boolean(
-      config.TelegramConfig?.enabled &&
-      config.TelegramConfig?.loginEnabled &&
-      (config.TelegramConfig?.botToken || process.env.TELEGRAM_BOT_TOKEN) &&
-      (config.TelegramConfig?.botUsername || process.env.TELEGRAM_BOT_USERNAME)
-    ),
-    TelegramBotUsername: config.TelegramConfig?.botUsername || process.env.TELEGRAM_BOT_USERNAME || '',
-    DanmakuAutoLoadDefault: config.SiteConfig.DanmakuAutoLoadDefault !== false,
+    EnableTelegramLogin: false,
+    TelegramBotUsername: '',
     loginBackgroundImage: config.ThemeConfig?.loginBackgroundImage || '',
     registerBackgroundImage: config.ThemeConfig?.registerBackgroundImage || '',
     homeBackgroundImage: config.ThemeConfig?.homeBackgroundImage || '',
@@ -78,13 +71,13 @@ export async function GET(request: NextRequest) {
     rateBadgeStyle: config.ThemeConfig?.rateBadgeStyle || 'flag',
     progressThumbPresetId: config.ThemeConfig?.progressThumbPresetId || '',
     progressThumbCustomUrl: config.ThemeConfig?.progressThumbCustomUrl || '',
-    // AI配置（只暴露功能开关，不暴露API密钥等敏感信息）
-    AIEnabled: config.AIConfig?.Enabled || false,
-    AIEnableHomepageEntry: config.AIConfig?.EnableHomepageEntry || false,
-    AIEnableVideoCardEntry: config.AIConfig?.EnableVideoCardEntry || false,
-    AIEnablePlayPageEntry: config.AIConfig?.EnablePlayPageEntry || false,
-    AIDefaultMessageNoVideo: config.AIConfig?.DefaultMessageNoVideo || '',
-    AIDefaultMessageWithVideo: config.AIConfig?.DefaultMessageWithVideo || '',
+    // AI问片已移除：开关恒关
+    AIEnabled: false,
+    AIEnableHomepageEntry: false,
+    AIEnableVideoCardEntry: false,
+    AIEnablePlayPageEntry: false,
+    AIDefaultMessageNoVideo: '',
+    AIDefaultMessageWithVideo: '',
   };
   return NextResponse.json(result);
 }

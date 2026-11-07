@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clapperboard, Clover, Container, Film, Flame, Globe, Heart, Home, SquarePlay, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
+import { Blend, Cat, Clover, Film, Flame, Globe, Heart, Home, SquarePlay, Star, Tv, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -30,48 +30,45 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     {
       icon: Film,
       label: '电影',
+      key: 'movie',
       href: '/douban?type=movie',
     },
     {
       icon: Tv,
       label: '剧集',
+      key: 'tv',
       href: '/douban?type=tv',
     },
     {
       icon: Cat,
       label: '动漫',
+      key: 'anime',
       href: '/douban?type=anime',
     },
     {
       icon: Flame,
       label: '里番',
+      key: 'hanime',
       href: '/hanime',
-    },
-    {
-      icon: Clapperboard,
-      label: 'MissAV',
-      href: '/missav',
     },
     {
       icon: Heart,
       label: '爱情岛',
+      key: 'aqdlt',
       href: '/aqdlt',
     },
     {
       icon: SquarePlay,
       label: 'HoHoJ',
+      key: 'hohoj',
       href: '/hohoj',
     },
     {
       icon: Clover,
       label: '综艺',
+      key: 'show',
       href: '/douban?type=show',
     },
-      {
-        icon: TvMinimalPlay,
-        label: '电视直播',
-        href: '/live',
-      },
   ]);
 
   useEffect(() => {
@@ -83,41 +80,43 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       {
         icon: Film,
         label: '电影',
+      key: 'movie',
         href: '/douban?type=movie',
       },
       {
         icon: Tv,
         label: '剧集',
+      key: 'tv',
         href: '/douban?type=tv',
       },
       {
         icon: Cat,
         label: '动漫',
+      key: 'anime',
         href: '/douban?type=anime',
       },
       {
         icon: Flame,
         label: '里番',
+      key: 'hanime',
         href: '/hanime',
-      },
-      {
-        icon: Clapperboard,
-        label: 'MissAV',
-        href: '/missav',
       },
       {
         icon: Heart,
         label: '爱情岛',
+      key: 'aqdlt',
         href: '/aqdlt',
       },
       {
         icon: SquarePlay,
         label: 'HoHoJ',
+      key: 'hohoj',
         href: '/hohoj',
       },
       {
         icon: Clover,
         label: '综艺',
+      key: 'show',
         href: '/douban?type=show',
       },
     ];
@@ -129,16 +128,10 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       items.push({
         icon: Star,
         label: '自定义',
+        key: 'custom',
         href: '/douban?type=custom',
       });
     }
-
-    // 源站浏览：通用自定义源按真实站点分类浏览
-    items.push({
-      icon: Container,
-      label: '源浏览',
-      href: '/browse',
-    });
 
     // 特殊源入口不在导航展示，只能手动访问 /under
 
@@ -170,7 +163,14 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       }}
     >
       <ul className='flex items-center overflow-x-auto scrollbar-hide'>
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => {
+            if (typeof window === 'undefined') return true;
+            const disabled = (window as any).RUNTIME_CONFIG
+              ?.DISABLED_CHANNELS as string[] | undefined;
+            return !(item as any).key || !disabled?.includes((item as any).key);
+          })
+          .map((item) => {
           const active = isActive(item.href);
           return (
             <li

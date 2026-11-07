@@ -3,14 +3,6 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
-const {
-  attachTVRemoteIO,
-  cleanupTVRemoteDevices,
-  clearTVRemoteHub,
-  registerTVRemoteDevice,
-  removeTVRemoteSocket,
-  updateTVRemoteDevice,
-} = require('./src/lib/tv-remote-hub.js');
 
 function shouldInitSQLite() {
   const isCloudflare = process.env.CF_PAGES === '1' || process.env.BUILD_TARGET === 'cloudflare';
@@ -772,60 +764,6 @@ function parseSocketAuth(socket) {
   }
 }
 
-class TVRemoteServer {
-  constructor(io) {
-    this.io = io;
-    this.cleanupInterval = null;
-    attachTVRemoteIO(io);
-    this.setupEventHandlers();
-    this.startCleanupTimer();
-  }
-
-  setupEventHandlers() {
-    this.io.on('connection', (socket) => {
-      socket.on('tv-remote:register-tv', (data, callback) => {
-        const auth = parseSocketAuth(socket);
-        if (!auth?.username) {
-          callback?.({ success: false, error: '未登录' });
-          return;
-        }
-
-        const deviceId = String(data?.deviceId || '').slice(0, 128);
-        if (!deviceId) {
-          callback?.({ success: false, error: '缺少设备 ID' });
-          return;
-        }
-
-        callback?.(registerTVRemoteDevice(socket.id, auth.username, data));
-      });
-
-      socket.on('tv-remote:tv-state', (data) => {
-        const auth = parseSocketAuth(socket);
-        if (!auth?.username) return;
-        updateTVRemoteDevice(socket.id, auth.username, data);
-      });
-
-      socket.on('disconnect', () => {
-        removeTVRemoteSocket(socket.id);
-      });
-    });
-  }
-
-  startCleanupTimer() {
-    this.cleanupInterval = setInterval(() => {
-      cleanupTVRemoteDevices();
-    }, 30_000);
-  }
-
-  destroy() {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-    clearTVRemoteHub();
-  }
-}
-
 app.prepare().then(async () => {
   const httpServer = createServer(async (req, res) => {
     try {
@@ -843,14 +781,12 @@ app.prepare().then(async () => {
   console.log('[WatchRoom] Config:', watchRoomConfig);
 
   let watchRoomServer = null;
-  let tvRemoteServer = null;
   let io = null;
 
-  const tvModeEnabled = isTVModeEnabled();
   const shouldStartInternalWatchRoom =
     watchRoomConfig.enabled && watchRoomConfig.serverType === 'internal';
 
-  if (tvModeEnabled || shouldStartInternalWatchRoom) {
+  if (shouldStartInternalWatchRoom) {
     io = new Server(httpServer, {
       path: '/socket.io',
       cors: {
@@ -858,13 +794,6 @@ app.prepare().then(async () => {
         methods: ['GET', 'POST'],
       },
     });
-  }
-
-  if (tvModeEnabled && io) {
-    tvRemoteServer = new TVRemoteServer(io);
-    console.log('[TVRemote] Socket.IO remote server initialized');
-  } else {
-    console.log('[TVRemote] TV mode disabled, remote server not initialized');
   }
 
   if (shouldStartInternalWatchRoom && io) {

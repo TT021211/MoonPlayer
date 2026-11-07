@@ -4,7 +4,21 @@ import { useEffect } from 'react';
 
 import { getAuthInfoFromBrowserCookie, clearAuthCookie } from '@/lib/auth';
 import { TOKEN_CONFIG } from '@/lib/refresh-token';
-import { isLoginPathname, resolveLoginPath } from '@/lib/tv-mode';
+
+// 登录页判定（原 tv-mode 逻辑已精简：只有 /login 系页面）
+function isLoginPathname(pathname: string): boolean {
+  return (
+    pathname === '/login' ||
+    pathname.startsWith('/login/') ||
+    pathname === '/register' ||
+    pathname === '/qr-login' ||
+    pathname === '/oidc-register'
+  );
+}
+
+function resolveLoginPath(): string {
+  return '/login';
+}
 
 /**
  * Token 自动刷新管理器
@@ -70,7 +84,7 @@ export function TokenRefreshManager() {
                 // 登出失败时清除前端cookie
                 clearAuthCookie();
               }
-              const loginPath = resolveLoginPath(window.location.pathname);
+              const loginPath = resolveLoginPath();
               window.location.href = `${loginPath}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
             }
             return false;
@@ -111,7 +125,7 @@ export function TokenRefreshManager() {
           // 登出失败时清除前端cookie
           clearAuthCookie();
         }).finally(() => {
-          const loginPath = resolveLoginPath(window.location.pathname);
+          const loginPath = resolveLoginPath();
           window.location.href = `${loginPath}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         });
         return false;
@@ -199,7 +213,7 @@ export function TokenRefreshManager() {
                   // 登出失败时清除前端cookie
                   clearAuthCookie();
                 }
-                const loginPath = resolveLoginPath(window.location.pathname);
+                const loginPath = resolveLoginPath();
                 window.location.href = `${loginPath}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
               }
             }

@@ -13,7 +13,6 @@ import {
   PlayRecord,
   Favorite,
   SkipConfig,
-  DanmakuFilterConfig,
   Notification,
   MovieRequest,
   PushSubscriptionRecord,
@@ -2946,58 +2945,6 @@ export class PostgresStorage implements IStorage {
     }
   }
 
-  // ==================== 弹幕过滤配置 ====================
-
-  async getDanmakuFilterConfig(
-    userName: string
-  ): Promise<DanmakuFilterConfig | null> {
-    try {
-      const result = await this.db
-        .prepare('SELECT rules FROM danmaku_filter_configs WHERE username = $1')
-        .bind(userName)
-        .first();
-
-      if (!result) return null;
-      return JSON.parse(result.rules as string);
-    } catch (err) {
-      console.error('PostgresStorage.getDanmakuFilterConfig error:', err);
-      return null;
-    }
-  }
-
-  async setDanmakuFilterConfig(
-    userName: string,
-    config: DanmakuFilterConfig
-  ): Promise<void> {
-    try {
-      await this.db
-        .prepare(
-          `
-          INSERT INTO danmaku_filter_configs (username, rules)
-          VALUES ($1, $2)
-          ON CONFLICT (username) DO UPDATE SET rules = EXCLUDED.rules
-        `
-        )
-        .bind(userName, JSON.stringify(config))
-        .run();
-    } catch (err) {
-      console.error('PostgresStorage.setDanmakuFilterConfig error:', err);
-      throw err;
-    }
-  }
-
-  async deleteDanmakuFilterConfig(userName: string): Promise<void> {
-    try {
-      await this.db
-        .prepare('DELETE FROM danmaku_filter_configs WHERE username = $1')
-        .bind(userName)
-        .run();
-    } catch (err) {
-      console.error('PostgresStorage.deleteDanmakuFilterConfig error:', err);
-      throw err;
-    }
-  }
-
   // ==================== 通知 ====================
 
   async getNotifications(userName: string): Promise<Notification[]> {
@@ -3448,7 +3395,6 @@ export class PostgresStorage implements IStorage {
         'music_v2_history',
         'music_v2_playlists',
         'music_v2_playlist_items',
-        'danmaku_filter_configs',
         'notifications',
         'movie_requests',
         'user_movie_requests',

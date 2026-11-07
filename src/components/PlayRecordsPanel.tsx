@@ -249,7 +249,7 @@ export default function PlayRecordsPanel({
               <p className='text-sm'>暂无播放记录</p>
             </div>
           ) : (
-            <div className='grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
+            <div className='video-grid px-0 sm:px-2'>
               {playRecords.map((record) => {
                 const { source, id } = parseKey(record.key);
                 const checked = selectedKeys.has(record.key);

@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const response = await fetch(
       `${targetSource.api}?ac=videolist&t=${encodeURIComponent(categoryId)}&pg=${page}`,
       // 中转站（aqdlt）一次抓取 15~60 秒，超时设 120 秒；直连站 10 秒足够
-      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(120000) }
+      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(30000) }
     );
     if (!response.ok) throw new Error('获取 aqdlt 列表失败');
 

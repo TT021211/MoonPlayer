@@ -35,16 +35,13 @@ export async function POST(request: NextRequest) {
       AnnouncementDisplayMode,
       SearchDownstreamMaxPage,
       SiteInterfaceCacheTime,
+      DisabledChannels,
       DoubanProxyType,
       DoubanProxy,
       DoubanImageProxyType,
       DoubanImageProxy,
       DisableYellowFilter,
       FluidSearch,
-      DanmakuSourceType,
-      DanmakuApiBase,
-      DanmakuApiToken,
-      DanmakuAutoLoadDefault,
       TMDBApiKey,
       TMDBProxy,
       TMDBReverseProxy,
@@ -98,16 +95,13 @@ export async function POST(request: NextRequest) {
       AnnouncementDisplayMode?: 'once' | 'every';
       SearchDownstreamMaxPage: number;
       SiteInterfaceCacheTime: number;
+      DisabledChannels?: string[];
       DoubanProxyType: string;
       DoubanProxy: string;
       DoubanImageProxyType: string;
       DoubanImageProxy: string;
       DisableYellowFilter: boolean;
       FluidSearch: boolean;
-      DanmakuSourceType?: 'builtin' | 'custom';
-      DanmakuApiBase: string;
-      DanmakuApiToken: string;
-      DanmakuAutoLoadDefault?: boolean;
       TMDBApiKey?: string;
       TMDBProxy?: string;
       TMDBReverseProxy?: string;
@@ -170,19 +164,13 @@ export async function POST(request: NextRequest) {
         AnnouncementDisplayMode !== 'every') ||
       typeof SearchDownstreamMaxPage !== 'number' ||
       typeof SiteInterfaceCacheTime !== 'number' ||
+      (DisabledChannels !== undefined && !Array.isArray(DisabledChannels)) ||
       typeof DoubanProxyType !== 'string' ||
       typeof DoubanProxy !== 'string' ||
       typeof DoubanImageProxyType !== 'string' ||
       typeof DoubanImageProxy !== 'string' ||
       typeof DisableYellowFilter !== 'boolean' ||
       typeof FluidSearch !== 'boolean' ||
-      (DanmakuSourceType !== undefined &&
-        DanmakuSourceType !== 'builtin' &&
-        DanmakuSourceType !== 'custom') ||
-      typeof DanmakuApiBase !== 'string' ||
-      typeof DanmakuApiToken !== 'string' ||
-      (DanmakuAutoLoadDefault !== undefined &&
-        typeof DanmakuAutoLoadDefault !== 'boolean') ||
       (TMDBApiKey !== undefined && typeof TMDBApiKey !== 'string') ||
       (TMDBProxy !== undefined && typeof TMDBProxy !== 'string') ||
       (TMDBReverseProxy !== undefined &&
@@ -285,16 +273,15 @@ export async function POST(request: NextRequest) {
       AnnouncementDisplayMode,
       SearchDownstreamMaxPage,
       SiteInterfaceCacheTime,
+      DisabledChannels: Array.isArray(DisabledChannels)
+        ? DisabledChannels.filter((k): k is string => typeof k === 'string')
+        : [],
       DoubanProxyType,
       DoubanProxy: normalizeApiBaseUrl(DoubanProxy),
       DoubanImageProxyType,
       DoubanImageProxy: normalizeApiBaseUrl(DoubanImageProxy),
       DisableYellowFilter,
       FluidSearch,
-      DanmakuSourceType,
-      DanmakuApiBase: normalizeApiBaseUrl(DanmakuApiBase),
-      DanmakuApiToken,
-      DanmakuAutoLoadDefault,
       TMDBApiKey,
       TMDBProxy: normalizeApiBaseUrl(TMDBProxy),
       TMDBReverseProxy: normalizeApiBaseUrl(TMDBReverseProxy),

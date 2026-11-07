@@ -375,7 +375,7 @@ function HanimePageClient() {
               <div className='text-center text-gray-500 py-8 dark:text-gray-400'>暂无内容</div>
             ) : (
               <>
-                <div className='grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
+                <div className='video-grid px-0 sm:px-2'>
                   {videos.map((item) => (
                     <div key={`${item.source}-${item.id}`} className='w-full'>
                       <VideoCard

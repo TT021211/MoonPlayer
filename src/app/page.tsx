@@ -15,7 +15,6 @@ import { DoubanItem } from '@/lib/types';
 import { base58Encode, processImageUrl } from '@/lib/utils';
 
 import BannerCarousel from '@/components/BannerCarousel';
-import ContinueWatching from '@/components/ContinueWatching';
 import FireworksCanvas from '@/components/FireworksCanvas';
 import HttpWarningDialog from '@/components/HttpWarningDialog';
 import PageLayout from '@/components/PageLayout';
@@ -48,8 +47,6 @@ function HomeClient() {
     { id: 'upcomingContent', name: '即将上映', enabled: true, order: 5 },
   ]);
   const [homeBannerEnabled, setHomeBannerEnabled] = useState(true);
-  const [homeContinueWatchingEnabled, setHomeContinueWatchingEnabled] =
-    useState(true);
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [showHttpWarning, setShowHttpWarning] = useState(true);
@@ -244,15 +241,6 @@ function HomeClient() {
     const savedHomeBannerEnabled = localStorage.getItem('homeBannerEnabled');
     if (savedHomeBannerEnabled !== null) {
       setHomeBannerEnabled(savedHomeBannerEnabled === 'true');
-    }
-
-    const savedHomeContinueWatchingEnabled = localStorage.getItem(
-      'homeContinueWatchingEnabled'
-    );
-    if (savedHomeContinueWatchingEnabled !== null) {
-      setHomeContinueWatchingEnabled(
-        savedHomeContinueWatchingEnabled === 'true'
-      );
     }
   };
 
@@ -674,9 +662,6 @@ function HomeClient() {
 
               {/* （已精简：音乐/漫画/电子书/源站寻片/AI问片入口移除） */}
             </div>
-
-            {/* 继续观看 */}
-            {homeContinueWatchingEnabled && <ContinueWatching />}
 
             {/* 根据配置动态渲染首页模块 */}
             {homeModules

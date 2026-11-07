@@ -4,14 +4,10 @@ import { useEffect } from 'react';
 
 import { initStartupCacheCleanup } from '@/lib/startup/cacheCleanup';
 
-/**
- * 启动缓存清理组件
- * 在应用启动时异步执行一次缓存清理
- */
-export function StartupCacheCleanup() {
+// 启动时初始化推荐缓存模块。
+export default function StartupCacheCleanup() {
   useEffect(() => {
     initStartupCacheCleanup();
   }, []);
-
   return null;
 }

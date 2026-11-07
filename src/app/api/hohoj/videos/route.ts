@@ -80,8 +80,8 @@ export async function GET(request: NextRequest) {
       modelMatch
         ? `${targetSource.api}?ac=model-videos&mid=${encodeURIComponent(modelMatch[1])}&pg=${page}`
         : `${targetSource.api}?ac=videolist&t=${encodeURIComponent(categoryId)}&pg=${page}`,
-      // 中转站（hohoj）一次抓取 15~60 秒，超时设 120 秒；直连站 10 秒足够
-      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(120000) }
+      // 自建源直连抓取为主，超时设 30 秒；失败前端可重试，避免占满 serverless 并发
+      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(30000) }
     );
     if (!response.ok) throw new Error('获取 hohoj 列表失败');
 

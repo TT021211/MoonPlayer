@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const classUrl = `${targetSite.api}?ac=list`;
     const classResponse = await fetch(classUrl, {
       headers: API_CONFIG.search.headers,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!classResponse.ok) {

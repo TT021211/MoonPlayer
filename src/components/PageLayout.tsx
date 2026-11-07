@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { BackButton } from './BackButton';
 import MobileBottomNav from './MobileBottomNav';
 import MobileHeader from './MobileHeader';
+import PlayHistoryButton from './PlayHistoryButton';
 import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { UpdateNotification } from './UpdateNotification';
@@ -100,6 +101,7 @@ const PageLayout = ({ children, activePath = '/', hideNavigation = false }: Page
             {!hideNavigation && (
               <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
                 <ThemeToggle />
+                <PlayHistoryButton />
                 <UserMenu />
                 <UpdateNotification />
               </div>

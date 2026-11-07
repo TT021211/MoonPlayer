@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     try {
       const response = await fetch(`${targetSource.api}?ac=list`, {
         headers: API_CONFIG.search.headers,
-        signal: AbortSignal.timeout(120000), // 中转站 render 慢，直连站 10 秒足够
+        signal: AbortSignal.timeout(30000),
       });
       if (response.ok) {
         const data = parseJsonLosslessIntegers<CmsClassResponse>(await response.text());

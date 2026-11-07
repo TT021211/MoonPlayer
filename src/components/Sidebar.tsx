@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clapperboard, Clover, Container, Film, Flame, Globe, Heart, Home, Menu, Search, SquarePlay, Star, Tv, TvMinimalPlay, Users } from 'lucide-react';
+import { Blend, Cat, Clover, Film, Flame, Globe, Heart, Home, Menu, Search, SquarePlay, Star, Tv, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -132,47 +132,44 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     {
       icon: Film,
       label: '电影',
+      key: 'movie',
       href: '/douban?type=movie',
     },
     {
       icon: Tv,
       label: '剧集',
+      key: 'tv',
       href: '/douban?type=tv',
     },
     {
       icon: Cat,
       label: '动漫',
+      key: 'anime',
       href: '/douban?type=anime',
     },
     {
       icon: Flame,
       label: '里番',
+      key: 'hanime',
       href: '/hanime',
-    },
-    {
-      icon: Clapperboard,
-      label: 'MissAV',
-      href: '/missav',
     },
     {
       icon: Heart,
       label: '爱情岛',
+      key: 'aqdlt',
       href: '/aqdlt',
     },
     {
       icon: SquarePlay,
       label: 'HoHoJ',
+      key: 'hohoj',
       href: '/hohoj',
     },
     {
       icon: Clover,
       label: '综艺',
+      key: 'show',
       href: '/douban?type=show',
-    },
-    {
-      icon: TvMinimalPlay,
-      label: '电视直播',
-      href: '/live',
     },
   ]);
 
@@ -184,41 +181,43 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       {
         icon: Film,
         label: '电影',
+      key: 'movie',
         href: '/douban?type=movie',
       },
       {
         icon: Tv,
         label: '剧集',
+      key: 'tv',
         href: '/douban?type=tv',
       },
       {
         icon: Cat,
         label: '动漫',
+      key: 'anime',
         href: '/douban?type=anime',
       },
       {
         icon: Flame,
         label: '里番',
+      key: 'hanime',
         href: '/hanime',
-      },
-      {
-        icon: Clapperboard,
-        label: 'MissAV',
-        href: '/missav',
       },
       {
         icon: Heart,
         label: '爱情岛',
+      key: 'aqdlt',
         href: '/aqdlt',
       },
       {
         icon: SquarePlay,
         label: 'HoHoJ',
+      key: 'hohoj',
         href: '/hohoj',
       },
       {
         icon: Clover,
         label: '综艺',
+      key: 'show',
         href: '/douban?type=show',
       },
     ];
@@ -230,16 +229,10 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       items.push({
         icon: Star,
         label: '自定义',
+        key: 'custom',
         href: '/douban?type=custom',
       });
     }
-
-    // 源站浏览：通用自定义源按真实站点分类浏览
-    items.push({
-      icon: Container,
-      label: '源浏览',
-      href: '/browse',
-    });
 
     // 特殊源入口不在导航展示，只能手动访问 /under
 
@@ -321,7 +314,14 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
             {/* 菜单项 */}
             <div className='flex-1 overflow-y-auto px-2 pt-4'>
               <div className='space-y-1'>
-                {menuItems.map((item) => {
+                {menuItems
+                  .filter((item) => {
+                    if (typeof window === 'undefined') return true;
+                    const disabled = (window as any).RUNTIME_CONFIG
+                      ?.DISABLED_CHANNELS as string[] | undefined;
+                    return !item.key || !disabled?.includes(item.key);
+                  })
+                  .map((item) => {
                   // 检查当前路径是否匹配这个菜单项
                   const typeMatch = item.href.match(/type=([^&]+)/)?.[1];
 

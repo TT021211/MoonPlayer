@@ -297,7 +297,7 @@ export async function getDetailFromApi(
 export async function getDetailFromApiV2(
   apiSite: ApiSite,
   id: string,
-  timeoutMs = 120000 // 中转站（如 missav，经 ScraperAPI render）单次 20~60 秒，直连站远不需要这么久
+  timeoutMs = 30000 // 自建源直连站 3~10 秒即回；30 秒兜底，失败前端可重试
 ): Promise<SearchResult> {
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;
 

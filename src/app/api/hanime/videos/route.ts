@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(
       `${targetSource.api}?ac=videolist&t=${encodeURIComponent(categoryId)}&pg=${page}`,
-      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(10000) }
+      { headers: API_CONFIG.search.headers, signal: AbortSignal.timeout(30000) }
     );
     if (!response.ok) throw new Error('获取 hanime 列表失败');
 

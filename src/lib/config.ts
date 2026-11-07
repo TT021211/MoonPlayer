@@ -7,21 +7,7 @@ import { AdminConfig } from './admin.types';
 import { fetchConfigSubscription } from './config-subscription';
 import { setServerTmdbImageBaseUrl } from './tmdb-image-base';
 
-const BUILTIN_DANMAKU_API_BASE = 'https://mtvpls-danmu.netlify.app/87654321';
-const DEFAULT_LIVE_REFRESH_INTERVAL_HOURS = 12;
 const DEFAULT_TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org';
-
-function normalizeLiveRefreshIntervalHours(
-  refreshIntervalHours?: number
-): number {
-  const normalizedInterval = Number(refreshIntervalHours);
-
-  if (!Number.isFinite(normalizedInterval) || normalizedInterval <= 0) {
-    return DEFAULT_LIVE_REFRESH_INTERVAL_HOURS;
-  }
-
-  return Math.floor(normalizedInterval);
-}
 
 export interface ApiSite {
   key: string;
@@ -29,13 +15,6 @@ export interface ApiSite {
   name: string;
   detail?: string;
   proxyMode?: boolean;
-}
-
-export interface LiveCfg {
-  name: string;
-  url: string;
-  ua?: string;
-  epg?: string; // 节目单
 }
 
 interface ConfigFileStruct {
@@ -48,9 +27,6 @@ interface ConfigFileStruct {
     type: 'movie' | 'tv';
     query: string;
   }[];
-  lives?: {
-    [key: string]: LiveCfg;
-  };
   special_source_apis?: string[];
   specialSourceApis?: string[];
 }
@@ -194,43 +170,6 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
   // 将 Map 转换回数组
   adminConfig.CustomCategories = Array.from(currentCustomCategories.values());
 
-  const livesFromFile = Object.entries(fileConfig.lives || []);
-  const currentLives = new Map(
-    (adminConfig.LiveConfig || []).map((l) => [l.key, l])
-  );
-  livesFromFile.forEach(([key, site]) => {
-    const existingLive = currentLives.get(key);
-    if (existingLive) {
-      existingLive.name = site.name;
-      existingLive.url = site.url;
-      existingLive.ua = site.ua;
-      existingLive.epg = site.epg;
-    } else {
-      // 如果不存在，创建新条目
-      currentLives.set(key, {
-        key,
-        name: site.name,
-        url: site.url,
-        ua: site.ua,
-        epg: site.epg,
-        channelNumber: 0,
-        from: 'config',
-        disabled: false,
-      });
-    }
-  });
-
-  // 检查现有 LiveConfig 是否在 fileConfig.lives 中，如果不在则标记为 custom
-  const livesFromFileKeys = new Set(livesFromFile.map(([key]) => key));
-  currentLives.forEach((live) => {
-    if (!livesFromFileKeys.has(live.key)) {
-      live.from = 'custom';
-    }
-  });
-
-  // 将 Map 转换回数组
-  adminConfig.LiveConfig = Array.from(currentLives.values());
-
   return adminConfig;
 }
 
@@ -283,9 +222,6 @@ async function getInitConfig(
   } catch (e) {
     cfgFile = {} as ConfigFileStruct;
   }
-  const hasCustomDanmakuEnv = Boolean(
-    process.env.DANMAKU_API_BASE || process.env.DANMAKU_API_TOKEN
-  );
   const adminConfig: AdminConfig = {
     ConfigFile: configSource,
     ConfigSubscribtion: subConfig,
@@ -299,8 +235,9 @@ async function getInitConfig(
           ? 'every'
           : 'once',
       SearchDownstreamMaxPage:
-        Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
+        Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 2,
       SiteInterfaceCacheTime: cfgFile.cache_time || 7200,
+      DisabledChannels: [],
       DoubanProxyType:
         process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'cmliussss-cdn-tencent',
       DoubanProxy: process.env.NEXT_PUBLIC_DOUBAN_PROXY || '',
@@ -311,15 +248,6 @@ async function getInitConfig(
       DisableYellowFilter:
         process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true',
       FluidSearch: process.env.NEXT_PUBLIC_FLUID_SEARCH !== 'false',
-      // 弹幕配置
-      DanmakuSourceType: hasCustomDanmakuEnv ? 'custom' : 'builtin',
-      DanmakuApiBase:
-        process.env.DANMAKU_API_BASE ||
-        (hasCustomDanmakuEnv
-          ? 'http://localhost:9321'
-          : BUILTIN_DANMAKU_API_BASE),
-      DanmakuApiToken: process.env.DANMAKU_API_TOKEN || '87654321',
-      DanmakuAutoLoadDefault: true,
       // TMDB配置
       TMDBApiKey: process.env.TMDB_API_KEY || '',
       TMDBProxy: process.env.TMDB_PROXY || '',
@@ -374,20 +302,6 @@ async function getInitConfig(
     },
     SourceConfig: [],
     CustomCategories: [],
-    LiveConfig: [],
-    TelegramConfig: {
-      enabled: process.env.TELEGRAM_BOT_ENABLED === 'true' || Boolean(process.env.TELEGRAM_BOT_TOKEN),
-      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-      botUsername: process.env.TELEGRAM_BOT_USERNAME || '',
-      webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '',
-      apiProxy: process.env.TELEGRAM_API_PROXY || '',
-      apiBaseUrl: process.env.TELEGRAM_API_BASE_URL || '',
-      loginEnabled: process.env.TELEGRAM_LOGIN_ENABLED !== 'false',
-      bindingEnabled: process.env.TELEGRAM_BINDING_ENABLED !== 'false',
-      registrationEnabled: process.env.TELEGRAM_REGISTRATION_ENABLED === 'true',
-      notificationsEnabled: process.env.TELEGRAM_NOTIFICATIONS_ENABLED !== 'false',
-      defaultNotifications: process.env.TELEGRAM_DEFAULT_NOTIFICATIONS !== 'false',
-    },
     SpecialSourceApis: Array.isArray(cfgFile.special_source_apis)
       ? cfgFile.special_source_apis
       : Array.isArray(cfgFile.specialSourceApis)
@@ -423,23 +337,6 @@ async function getInitConfig(
     });
   });
 
-  // 从配置文件中补充直播源信息
-  Object.entries(cfgFile.lives || []).forEach(([key, live]) => {
-    if (!adminConfig.LiveConfig) {
-      adminConfig.LiveConfig = [];
-    }
-    adminConfig.LiveConfig.push({
-      key,
-      name: live.name,
-      url: live.url,
-      ua: live.ua,
-      epg: live.epg,
-      channelNumber: 0,
-      from: 'config',
-      disabled: false,
-    });
-  });
-
   return adminConfig;
 }
 
@@ -453,6 +350,9 @@ export async function getConfig(): Promise<AdminConfig> {
   if (configInitPromise) {
     return configInitPromise;
   }
+
+  // 订阅自动更新定时器（Node 常驻进程一次，serverless/边缘/本地存储下自保护跳过）
+  scheduleSubscriptionAutoRefresh();
 
   // 创建初始化 Promise
   configInitPromise = (async () => {
@@ -548,18 +448,15 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     adminConfig.SiteConfig = {
       SiteName: 'MoonTVPlus',
       Announcement: '',
-      SearchDownstreamMaxPage: 5,
+      SearchDownstreamMaxPage: 2,
       SiteInterfaceCacheTime: 7200,
+      DisabledChannels: [],
       DoubanProxyType: 'cmliussss-cdn-tencent',
       DoubanProxy: '',
       DoubanImageProxyType: 'cmliussss-cdn-tencent',
       DoubanImageProxy: '',
       DisableYellowFilter: false,
       FluidSearch: true,
-      DanmakuSourceType: 'builtin',
-      DanmakuApiBase: BUILTIN_DANMAKU_API_BASE,
-      DanmakuApiToken: '87654321',
-      DanmakuAutoLoadDefault: true,
       TMDBImageBaseUrl: DEFAULT_TMDB_IMAGE_BASE_URL,
       PansouApiUrl: '',
       PansouUsername: '',
@@ -580,22 +477,6 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
       TurnstileSecretKey: '',
       DefaultUserTags: [],
     };
-  }
-  // 确保弹幕配置存在
-  if (adminConfig.SiteConfig.DanmakuSourceType === undefined) {
-    adminConfig.SiteConfig.DanmakuSourceType = 'custom';
-  }
-  if (!adminConfig.SiteConfig.DanmakuApiBase) {
-    adminConfig.SiteConfig.DanmakuApiBase =
-      adminConfig.SiteConfig.DanmakuSourceType === 'builtin'
-        ? BUILTIN_DANMAKU_API_BASE
-        : 'http://localhost:9321';
-  }
-  if (!adminConfig.SiteConfig.DanmakuApiToken) {
-    adminConfig.SiteConfig.DanmakuApiToken = '87654321';
-  }
-  if (adminConfig.SiteConfig.DanmakuAutoLoadDefault === undefined) {
-    adminConfig.SiteConfig.DanmakuAutoLoadDefault = true;
   }
   if (adminConfig.SiteConfig.LiveChartProxy === undefined) {
     adminConfig.SiteConfig.LiveChartProxy = process.env.LIVECHART_PROXY || '';
@@ -656,25 +537,6 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   if (adminConfig.SiteConfig.AnalyticsCustomScript === undefined) {
     adminConfig.SiteConfig.AnalyticsCustomScript = '';
   }
-  if (!adminConfig.TelegramConfig) {
-    adminConfig.TelegramConfig = {
-      enabled: process.env.TELEGRAM_BOT_ENABLED === 'true' || Boolean(process.env.TELEGRAM_BOT_TOKEN),
-      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-      botUsername: process.env.TELEGRAM_BOT_USERNAME || '',
-      webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '',
-      apiProxy: process.env.TELEGRAM_API_PROXY || '',
-      apiBaseUrl: process.env.TELEGRAM_API_BASE_URL || '',
-      loginEnabled: process.env.TELEGRAM_LOGIN_ENABLED !== 'false',
-      bindingEnabled: process.env.TELEGRAM_BINDING_ENABLED !== 'false',
-      registrationEnabled: process.env.TELEGRAM_REGISTRATION_ENABLED === 'true',
-      notificationsEnabled: process.env.TELEGRAM_NOTIFICATIONS_ENABLED !== 'false',
-      defaultNotifications: process.env.TELEGRAM_DEFAULT_NOTIFICATIONS !== 'false',
-    };
-  }
-  if (adminConfig.TelegramConfig.registrationEnabled === undefined) {
-    adminConfig.TelegramConfig.registrationEnabled =
-      process.env.TELEGRAM_REGISTRATION_ENABLED === 'true';
-  }
   if (adminConfig.SiteConfig.PansouKeywordBlocklist === undefined) {
     adminConfig.SiteConfig.PansouKeywordBlocklist = '';
   }
@@ -711,9 +573,6 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   ) {
     adminConfig.CustomCategories = [];
   }
-  if (!adminConfig.LiveConfig || !Array.isArray(adminConfig.LiveConfig)) {
-    adminConfig.LiveConfig = [];
-  }
   // 区分「老库没有这个字段」(undefined → 需从配置文件兜底补齐)
   // 与「后台显式清空」(空数组 → 尊重用户的选择，不再回填)
   const specialSourceApisWasAbsent = !Array.isArray(
@@ -731,10 +590,6 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   ) {
     adminConfig.ClientAdSourceApis = [];
   }
-  adminConfig.LiveRefreshIntervalHours = normalizeLiveRefreshIntervalHours(
-    adminConfig.LiveRefreshIntervalHours
-  );
-
   if (adminConfig.OpenListConfig) {
     // 兼容已废弃的「离线下载独立 OpenList 源」字段（仅存在于旧配置里）
     const ol = adminConfig.OpenListConfig as typeof adminConfig.OpenListConfig & {
@@ -846,16 +701,6 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     }
   );
 
-  // 直播源去重
-  const seenLiveKeys = new Set<string>();
-  adminConfig.LiveConfig = adminConfig.LiveConfig.filter((live) => {
-    if (seenLiveKeys.has(live.key)) {
-      return false;
-    }
-    seenLiveKeys.add(live.key);
-    return true;
-  });
-
   // Emby配置迁移：将旧格式迁移到新格式
   if (adminConfig.EmbyConfig) {
     // 如果是旧格式（有ServerURL但没有Sources）
@@ -898,253 +743,11 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
       );
     }
   }
-
-  if (!adminConfig.SuwayomiConfig) {
-    adminConfig.SuwayomiConfig = {
-      Enabled: process.env.SUWAYOMI_ENABLED === 'true',
-      ServerURL:
-        process.env.SUWAYOMI_URL || process.env.NEXT_PUBLIC_SUWAYOMI_URL || '',
-      AuthMode:
-        (process.env.SUWAYOMI_AUTH_MODE as
-          | 'none'
-          | 'basic_auth'
-          | 'simple_login'
-          | undefined) || 'none',
-      Username: process.env.SUWAYOMI_USERNAME || '',
-      Password: process.env.SUWAYOMI_PASSWORD || '',
-      DefaultLang: process.env.SUWAYOMI_DEFAULT_LANG || 'zh',
-      SourceIds: [],
-      MaxSources: Number(process.env.SUWAYOMI_MAX_SOURCES || 10),
-    };
-  }
-  if (adminConfig.SuwayomiConfig.Enabled === undefined) {
-    adminConfig.SuwayomiConfig.Enabled = false;
-  }
-  if (adminConfig.SuwayomiConfig.ServerURL === undefined) {
-    adminConfig.SuwayomiConfig.ServerURL = '';
-  }
-  if (
-    adminConfig.SuwayomiConfig.AuthMode !== 'basic_auth' &&
-    adminConfig.SuwayomiConfig.AuthMode !== 'simple_login'
-  ) {
-    adminConfig.SuwayomiConfig.AuthMode = 'none';
-  }
-  if (adminConfig.SuwayomiConfig.Username === undefined) {
-    adminConfig.SuwayomiConfig.Username = '';
-  }
-  if (adminConfig.SuwayomiConfig.Password === undefined) {
-    adminConfig.SuwayomiConfig.Password = '';
-  }
-  if (adminConfig.SuwayomiConfig.DefaultLang === undefined) {
-    adminConfig.SuwayomiConfig.DefaultLang = 'zh';
-  }
-  if (!Array.isArray(adminConfig.SuwayomiConfig.SourceIds)) {
-    adminConfig.SuwayomiConfig.SourceIds = [];
-  }
-  if (
-    adminConfig.SuwayomiConfig.MaxSources === undefined ||
-    Number.isNaN(adminConfig.SuwayomiConfig.MaxSources)
-  ) {
-    adminConfig.SuwayomiConfig.MaxSources = 10;
-  }
-
-  if (!adminConfig.OPDSConfig) {
-    adminConfig.OPDSConfig = {
-      Enabled: process.env.OPDS_ENABLED === 'true',
-      Sources: (() => {
-        const json = process.env.OPDS_SOURCES_JSON;
-        if (json) {
-          try {
-            const parsed = JSON.parse(json);
-            if (Array.isArray(parsed)) return parsed;
-          } catch {
-            // ignore invalid env json
-          }
-        }
-
-        const envUrl = process.env.OPDS_URL || process.env.NEXT_PUBLIC_OPDS_URL;
-        if (!envUrl) return [];
-
-        return [
-          {
-            id: 'default',
-            name: process.env.OPDS_NAME || '默认书源',
-            type: 'opds',
-            url: envUrl,
-            enabled: true,
-            authMode:
-              (process.env.OPDS_AUTH_MODE as
-                | 'none'
-                | 'basic'
-                | 'header'
-                | undefined) || 'none',
-            username: process.env.OPDS_USERNAME || '',
-            password: process.env.OPDS_PASSWORD || '',
-            headerName: process.env.OPDS_HEADER_NAME || '',
-            headerValue: process.env.OPDS_HEADER_VALUE || '',
-            searchTemplate: process.env.OPDS_SEARCH_TEMPLATE || '',
-          },
-        ];
-      })(),
-      CacheTTL: Number(process.env.OPDS_CACHE_TTL_MS || 10 * 60 * 1000),
-    };
-  }
-  if (adminConfig.OPDSConfig.Enabled === undefined) {
-    adminConfig.OPDSConfig.Enabled = false;
-  }
-  if (!Array.isArray(adminConfig.OPDSConfig.Sources)) {
-    adminConfig.OPDSConfig.Sources = [];
-  }
-  adminConfig.OPDSConfig.Sources = adminConfig.OPDSConfig.Sources.filter(
-    (source: any) => (source?.type || 'opds') === 'opds'
-  ).map((source: any) => {
-    const { legado: _legado, ...rest } = source || {};
-    return { ...rest, type: 'opds' };
-  });
-  if (!Array.isArray(adminConfig.OPDSConfig.LegadoSubscriptions)) {
-    adminConfig.OPDSConfig.LegadoSubscriptions = [];
-  }
-  if (
-    adminConfig.OPDSConfig.CacheTTL === undefined ||
-    Number.isNaN(adminConfig.OPDSConfig.CacheTTL)
-  ) {
-    adminConfig.OPDSConfig.CacheTTL = Number(
-      process.env.OPDS_CACHE_TTL_MS || 10 * 60 * 1000
-    );
-  }
-
-  if (!adminConfig.NetDiskConfig) {
-    adminConfig.NetDiskConfig = {
-      Quark: {
-        Enabled: false,
-        Cookie: '',
-        SavePath: '/',
-        PlayMode: 'transcode_first',
-        MultiThreadPlayback: false,
-      },
-      Mobile: {
-        Enabled: false,
-        Authorization: '',
-      },
-      Baidu: {
-        Enabled: false,
-        Cookie: '',
-      },
-      Tianyi: {
-        Enabled: false,
-        Account: '',
-        Password: '',
-      },
-      Pan123: {
-        Enabled: false,
-        Account: '',
-        Password: '',
-      },
-      UC: {
-        Enabled: false,
-        Cookie: '',
-        Token: '',
-        SavePath: '/',
-      },
-      Pan115: {
-        Enabled: false,
-        Cookie: '',
-      },
-    };
-  }
-
-  if (!adminConfig.NetDiskConfig.Quark) {
-    adminConfig.NetDiskConfig.Quark = {
-      Enabled: false,
-      Cookie: '',
-      SavePath: '/',
-      PlayMode: 'transcode_first',
-      MultiThreadPlayback: false,
-    };
-  }
-  if (!adminConfig.NetDiskConfig.Quark.PlayMode) {
-    adminConfig.NetDiskConfig.Quark.PlayMode = 'transcode_first';
-  }
-  if (adminConfig.NetDiskConfig.Quark.MultiThreadPlayback === undefined) {
-    adminConfig.NetDiskConfig.Quark.MultiThreadPlayback = false;
-  }
-
-  if (!adminConfig.NetDiskConfig.Mobile) {
-    adminConfig.NetDiskConfig.Mobile = {
-      Enabled: false,
-      Authorization: '',
-    };
-  }
-
-  if (!adminConfig.NetDiskConfig.Baidu) {
-    adminConfig.NetDiskConfig.Baidu = {
-      Enabled: false,
-      Cookie: '',
-    };
-  }
-
-  if (!adminConfig.NetDiskConfig.Tianyi) {
-    adminConfig.NetDiskConfig.Tianyi = {
-      Enabled: false,
-      Account: '',
-      Password: '',
-    };
-  }
-
-  if (!adminConfig.NetDiskConfig.Pan123) {
-    adminConfig.NetDiskConfig.Pan123 = {
-      Enabled: false,
-      Account: '',
-      Password: '',
-    };
-  }
-
-  if (!adminConfig.NetDiskConfig.UC) {
-    adminConfig.NetDiskConfig.UC = {
-      Enabled: false,
-      Cookie: '',
-      Token: '',
-      SavePath: '/',
-    };
-  }
-
-  if (!adminConfig.NetDiskConfig.Pan115) {
-    adminConfig.NetDiskConfig.Pan115 = {
-      Enabled: false,
-      Cookie: '',
-    };
-  }
-
-  // 确保音乐配置存在
-  if (!adminConfig.MusicConfig) {
-    adminConfig.MusicConfig = {
-      Enabled: false,
-      BaseUrl: '',
-      Token: '',
-      ProxyEnabled: true,
-    };
-  } else if (adminConfig.MusicConfig.ProxyEnabled === undefined) {
-    adminConfig.MusicConfig.ProxyEnabled = true;
-  }
-
-  if (!adminConfig.OPDSConfig) {
-    adminConfig.OPDSConfig = {
-      Enabled: false,
-      Sources: [],
-      CacheTTL: 10 * 60 * 1000,
-    };
-  } else {
-    if (adminConfig.OPDSConfig.CacheTTL === undefined) {
-      adminConfig.OPDSConfig.CacheTTL = 10 * 60 * 1000;
-    }
-  }
-
   // API Base URL 统一去尾斜杠，避免拼接路径时出现 //
   const site = adminConfig.SiteConfig;
   if (site) {
     site.DoubanProxy = normalizeApiBaseUrl(site.DoubanProxy);
     site.DoubanImageProxy = normalizeApiBaseUrl(site.DoubanImageProxy);
-    site.DanmakuApiBase = normalizeApiBaseUrl(site.DanmakuApiBase);
     site.TMDBProxy = normalizeApiBaseUrl(site.TMDBProxy);
     site.TMDBReverseProxy = normalizeApiBaseUrl(site.TMDBReverseProxy);
     site.TMDBImageBaseUrl = normalizeApiBaseUrl(
@@ -1184,21 +787,9 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     }
   }
 
-  if (adminConfig.MusicConfig) {
-    adminConfig.MusicConfig.BaseUrl = normalizeApiBaseUrl(
-      adminConfig.MusicConfig.BaseUrl
-    );
-  }
-
   if (adminConfig.XiaoyaConfig) {
     adminConfig.XiaoyaConfig.ServerURL = normalizeApiBaseUrl(
       adminConfig.XiaoyaConfig.ServerURL
-    );
-  }
-
-  if (adminConfig.SuwayomiConfig) {
-    adminConfig.SuwayomiConfig.ServerURL = normalizeApiBaseUrl(
-      adminConfig.SuwayomiConfig.ServerURL
     );
   }
 
@@ -1218,35 +809,7 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     }
   }
 
-  if (adminConfig.AIConfig) {
-    adminConfig.AIConfig.OpenAIBaseURL = normalizeApiBaseUrl(
-      adminConfig.AIConfig.OpenAIBaseURL
-    );
-    adminConfig.AIConfig.ClaudeBaseURL = normalizeApiBaseUrl(
-      adminConfig.AIConfig.ClaudeBaseURL
-    );
-    adminConfig.AIConfig.CustomBaseURL = normalizeApiBaseUrl(
-      adminConfig.AIConfig.CustomBaseURL
-    );
-    adminConfig.AIConfig.DecisionOpenAIBaseURL = normalizeApiBaseUrl(
-      adminConfig.AIConfig.DecisionOpenAIBaseURL
-    );
-    adminConfig.AIConfig.DecisionCustomBaseURL = normalizeApiBaseUrl(
-      adminConfig.AIConfig.DecisionCustomBaseURL
-    );
-    // 新版工具式调用：补充默认值，避免旧存储配置未定义
-    adminConfig.AIConfig.EnableNewMode = adminConfig.AIConfig.EnableNewMode ?? true;
-    adminConfig.AIConfig.NewProtocol =
-      adminConfig.AIConfig.NewProtocol ?? 'openai-completions';
-    adminConfig.AIConfig.MaxContext = adminConfig.AIConfig.MaxContext ?? 131072;
-    adminConfig.AIConfig.CompressThreshold = adminConfig.AIConfig.CompressThreshold ?? 90;
-  }
 
-  if (adminConfig.TelegramConfig) {
-    adminConfig.TelegramConfig.apiBaseUrl = normalizeApiBaseUrl(
-      adminConfig.TelegramConfig.apiBaseUrl
-    );
-  }
 
   // 同步 TMDB 图片默认地址到轻量模块，供 getTMDBImageUrl 等服务端图片拼接使用
   setServerTmdbImageBaseUrl(adminConfig.SiteConfig?.TMDBImageBaseUrl);
@@ -1274,6 +837,80 @@ export async function resetConfig() {
   await db.saveAdminConfig(adminConfig);
 
   return;
+}
+
+// 配置订阅自动更新：后台“自动更新”开关打开且有订阅 URL 时，
+// 每小时检查一次 LastCheck，超过 12 小时未更新则后台拉取→解码→refine→落库。
+// 后台触发，不阻塞请求；失败只打日志，下次继续。localstorage/云函数环境不启用。
+const SUB_AUTO_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const SUB_AUTO_REFRESH_TICK_MS = 60 * 60 * 1000;
+let subAutoRefreshTimerStarted = false;
+let subAutoRefreshInFlight = false;
+
+function decodeSubscriptionContent(raw: string): string {
+  // 订阅内容为 Base58 编码的 JSON；解码失败则原样当 JSON 用
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const bs58 = require('bs58').default || require('bs58');
+    const decodedBytes = bs58.decode(raw.trim());
+    return new TextDecoder().decode(decodedBytes);
+  } catch {
+    return raw;
+  }
+}
+
+async function refreshSubscriptionOnce(): Promise<void> {
+  if (subAutoRefreshInFlight) return;
+  const cfg = cachedConfig;
+  if (!cfg?.ConfigSubscribtion?.AutoUpdate || !cfg.ConfigSubscribtion.URL) {
+    return;
+  }
+  const last = Date.parse(cfg.ConfigSubscribtion.LastCheck || '') || 0;
+  if (Date.now() - last < SUB_AUTO_REFRESH_INTERVAL_MS) return;
+  subAutoRefreshInFlight = true;
+  try {
+    const resp = await fetchConfigSubscription(
+      cfg.ConfigSubscribtion.URL,
+      cfg.ConfigSubscribtion.Proxy
+    );
+    if (!resp.ok) {
+      console.warn(`[订阅自动更新] 拉取失败: ${resp.status}`);
+      return;
+    }
+    const decoded = decodeSubscriptionContent(await resp.text());
+    JSON.parse(decoded); // 校验 JSON 合法性
+    cfg.ConfigFile = decoded;
+    cfg.ConfigSubscribtion.LastCheck = new Date().toISOString();
+    refineConfig(cfg);
+    await db.saveAdminConfig(cfg);
+    console.log('[订阅自动更新] 配置已更新');
+  } catch (e) {
+    console.warn('[订阅自动更新] 失败:', (e as Error)?.message || e);
+  } finally {
+    subAutoRefreshInFlight = false;
+  }
+}
+
+export function scheduleSubscriptionAutoRefresh(): void {
+  if (subAutoRefreshTimerStarted) return;
+  if (typeof window !== 'undefined') return;
+  if (process.env.CF_PAGES === '1' || process.env.BUILD_TARGET === 'cloudflare') {
+    return;
+  }
+  if ((process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage') === 'localstorage') {
+    return;
+  }
+  subAutoRefreshTimerStarted = true;
+  // 启动后先检查一次，之后每小时检查
+  setTimeout(() => {
+    refreshSubscriptionOnce().catch(() => {});
+  }, 60 * 1000);
+  const timer = setInterval(() => {
+    refreshSubscriptionOnce().catch(() => {});
+  }, SUB_AUTO_REFRESH_TICK_MS);
+  if (typeof (timer as unknown as { unref?: () => void }).unref === 'function') {
+    (timer as unknown as { unref: () => void }).unref();
+  }
 }
 
 export async function getCacheTime(): Promise<number> {

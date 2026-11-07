@@ -64,11 +64,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 请求分类视频列表
+    // 请求分类视频列表（5 分钟进程内缓存，翻页/切分类不回源）
+    const { getCacheTime } = await import('@/lib/config');
+    const { getCachedChannelList, setCachedChannelList } = await import(
+      '@/lib/channel-cache'
+    );
+    const listKey = `videos::${sourceKey}::${categoryId}::${page}::${specialOnly ? 'sp' : 'main'}`;
+    const cachedList = getCachedChannelList<{
+      results: SearchResult[];
+      total: number;
+      page: number;
+      pageCount: number;
+    }>(listKey);
+    if (cachedList) {
+      const cacheTime = await getCacheTime();
+      return NextResponse.json(cachedList, {
+        headers: {
+          'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
+        },
+      });
+    }
     const videoUrl = `${targetSite.api}?ac=videolist&t=${categoryId}&pg=${page}`;
     const videoResponse = await fetch(videoUrl, {
       headers: API_CONFIG.search.headers,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!videoResponse.ok) {
@@ -119,14 +138,16 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    const payload = {
       results,
       total: videoData.total || 0,
       page: parseInt(page),
       // 上游缺 pagecount 时按“有数据就还有下一页”兜底，前端以空页/重复页收敛
       pageCount:
         videoData.pagecount || (results.length > 0 ? parseInt(page) + 1 : parseInt(page)),
-    });
+    };
+    setCachedChannelList(listKey, payload);
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('Failed to get videos:', error);
     return NextResponse.json(

@@ -1,5 +1,24 @@
 import dns from 'dns';
 
+// DNS 解析 60 秒内存缓存：代理分片每 ts 一次 lookup，不缓存太贵
+const dnsCache = new Map<string, { exp: number; address: string }>();
+async function cachedDnsLookup(hostname: string): Promise<{ address: string } | null> {
+  const now = Date.now();
+  const hit = dnsCache.get(hostname);
+  if (hit && hit.exp > now) return { address: hit.address };
+  try {
+    const r = await dns.promises.lookup(hostname);
+    if (r && r.address) {
+      if (dnsCache.size > 2000) dnsCache.clear();
+      dnsCache.set(hostname, { exp: now + 60 * 1000, address: r.address });
+      return { address: r.address };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 /**
  * 判断 IP 地址是否为内网/本地私有地址
  * 覆盖 IPv4 和 IPv6，彻底杜绝所有变体绕过。
@@ -71,9 +90,9 @@ export async function validateProxyUrlServerSide(urlStr: string): Promise<boolea
       hostname = hostname.substring(1, hostname.length - 1);
     }
 
-    // 3. DNS 真实解析 (获取底层物理 IP)
+    // 3. DNS 真实解析 (获取底层物理 IP)，60 秒内存缓存：proxy/vod/segment 每分片一次 lookup 太贵
     // 这一步能彻底打碎各种形式的短格式 IP (127.1)、八/十六进制 IP (0x7f.0.0.1)、或者指向 127.0.0.1 的恶意外部域名 DNS 重绑定。
-    const lookupResult = await dns.promises.lookup(hostname);
+    const lookupResult = await cachedDnsLookup(hostname);
 
     if (!lookupResult || !lookupResult.address) {
       return false; // 解析不出 IP 则拒绝

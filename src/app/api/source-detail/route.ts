@@ -1281,8 +1281,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '无效的视频ID格式' }, { status: 400 });
   }
 
-  // 对于其他采集源，直接按 id 获取详情。
+  // 对于其他采集源，直接按 id 获取详情（进程内 10 分钟缓存，切集/刷新不回源）。
   try {
+    const { getCachedChannelDetail, setCachedChannelDetail } = await import(
+      '@/lib/channel-cache'
+    );
+    const hit = getCachedChannelDetail(sourceCode, id);
+    if (hit) {
+      const cacheTime = await getCacheTime();
+      return NextResponse.json(hit, {
+        headers: {
+          'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
+          'CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+          'Vercel-CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+          'Netlify-Vary': 'query',
+        },
+      });
+    }
     const apiSites = await getAvailableApiSites(authInfo.username, specialOnly);
     const apiSite = apiSites.find((site) => site.key === sourceCode);
 
@@ -1324,6 +1339,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    setCachedChannelDetail(sourceCode, id, resultWithProxy);
     return NextResponse.json(resultWithProxy, {
       headers: {
         'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,

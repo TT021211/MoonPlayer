@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const searchUrl = `${targetSite.api}?ac=videolist&wd=${encodeURIComponent(keyword)}&pg=${page}`;
     const searchResponse = await fetch(searchUrl, {
       headers: API_CONFIG.search.headers,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!searchResponse.ok) {

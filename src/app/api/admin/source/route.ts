@@ -466,16 +466,15 @@ export async function POST(request: NextRequest) {
     // 持久化到存储
     await db.saveAdminConfig(adminConfig);
 
-    // 清除短剧视频源缓存（因为视频源发生了变动）
+    // 清除视频源缓存（因为视频源发生了变动）
     try {
       await db.deleteGlobalValue('duanju');
       await db.deleteGlobalValue('hanime');
-      await db.deleteGlobalValue('missav');
       await db.deleteGlobalValue('aqdlt');
       await db.deleteGlobalValue('hohoj');
-      console.log('已清除短剧/hanime/missav/aqdlt/hohoj 视频源缓存');
+      console.log('已清除短剧/hanime/aqdlt/hohoj 视频源缓存');
     } catch (error) {
-      console.error('清除短剧/hanime/missav/aqdlt/hohoj 视频源缓存失败:', error);
+      console.error('清除短剧/hanime/aqdlt/hohoj 视频源缓存失败:', error);
       // 不影响主流程，继续执行
     }
 
