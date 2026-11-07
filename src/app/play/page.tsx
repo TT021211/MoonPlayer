@@ -1607,11 +1607,9 @@ function PlayPageClient() {
   };
 
   // 左右双击快退/快进（移动端双击触摸 + 桌面双击，复用方向键步长 seedStepSeconds）
+  // 手势规范：单击全区只显控制栏（不暂停/不播放）；双击中区暂停/播放；双击两侧快退/快进
   const lastSideTapRef = useRef<{ side: 'left' | 'right'; time: number }>({ side: 'left', time: 0 });
-  const sideTapTimerRef = useRef<{ left: ReturnType<typeof setTimeout> | null; right: ReturnType<typeof setTimeout> | null }>({
-    left: null,
-    right: null,
-  });
+  const lastCenterTapRef = useRef<number>(0);
   const seekBySide = (side: 'left' | 'right') => {
     const player = artPlayerRef.current;
     if (!player) return;
@@ -1626,25 +1624,45 @@ function PlayPageClient() {
       seekStepSecondsRef.current
     )}`;
   };
-  // 触摸：单击延迟 toggle（给双击留 280ms 取消窗口），双击直接 seek
+  const showPlayerControls = () => {
+    try {
+      const player = artPlayerRef.current;
+      if (player && player.controls) {
+        player.controls.show = true;
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+  const togglePlayPause = () => {
+    const player = artPlayerRef.current;
+    if (!player) return;
+    player.toggle();
+  };
+  // 触摸：单击仅显控制栏，双击直接 seek（两侧）/ 暂停播放（中区）
   const handleSideTouchEnd = (side: 'left' | 'right') => {
     const player = artPlayerRef.current;
     if (!player) return;
     const now = Date.now();
     const last = lastSideTapRef.current;
     if (last.side === side && now - last.time < 300) {
-      if (sideTapTimerRef.current[side]) {
-        clearTimeout(sideTapTimerRef.current[side]!);
-        sideTapTimerRef.current[side] = null;
-      }
       lastSideTapRef.current = { side, time: 0 };
       seekBySide(side);
     } else {
       lastSideTapRef.current = { side, time: now };
-      sideTapTimerRef.current[side] = setTimeout(() => {
-        sideTapTimerRef.current[side] = null;
-        player.toggle();
-      }, 280);
+      showPlayerControls();
+    }
+  };
+  const handleCenterTouchEnd = () => {
+    const player = artPlayerRef.current;
+    if (!player) return;
+    const now = Date.now();
+    if (now - lastCenterTapRef.current < 300) {
+      lastCenterTapRef.current = 0;
+      togglePlayPause();
+    } else {
+      lastCenterTapRef.current = now;
+      showPlayerControls();
     }
   };
 
@@ -8462,10 +8480,14 @@ function PlayPageClient() {
                   className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
                 ></div>
 
-                {/* 左右双击快退/快进热区（避开顶部与底部控制栏） */}
+                {/* 左右双击快退/快进热区（避开顶部与底部控制栏）；单击只显控制栏 */}
                 {!isVideoLoading && !videoError && (
                   <>
                     <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        showPlayerControls();
+                      }}
                       onDoubleClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -8482,7 +8504,29 @@ function PlayPageClient() {
                         ◀◀ 快退
                       </span>
                     </div>
+                    {/* 中区：单击只显控制栏，双击暂停/播放 */}
                     <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        showPlayerControls();
+                      }}
+                      onDoubleClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        togglePlayPause();
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        handleCenterTouchEnd();
+                      }}
+                      title='双击暂停/播放'
+                      className='absolute left-[28%] top-[20%] h-[60%] w-[44%] z-10 rounded-lg cursor-pointer'
+                    />
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        showPlayerControls();
+                      }}
                       onDoubleClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
