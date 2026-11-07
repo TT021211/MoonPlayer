@@ -261,7 +261,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 数据库 / redis 模式——校验用户名并尝试连接数据库
-    const { username, password, turnstileToken } = await req.json();
+    const { username: rawUsername, password, turnstileToken } = await req.json();
+  // 用户名不允许空格（注册时只允许字母数字下划线），前后空格一律视为输入法误带
+  const username =
+    typeof rawUsername === 'string' ? rawUsername.trim() : rawUsername;
 
     if (!username || typeof username !== 'string') {
       return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
