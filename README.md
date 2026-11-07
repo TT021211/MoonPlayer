@@ -479,7 +479,8 @@ volumes:
 
 - `/hanime` `/aqdlt` `/hohoj` 三个专用频道走专属接口，不受内容过滤影响；
   `/kinostream` `/bjcam` 走通用自定义源（搜索页源站寻片 + 聚合搜索，分类取自各源真实 `?ac=list`，受内容过滤）。
-- bjcam 上游整站被 CF 拦截，网关需配 `SCRAPERAPI_KEY` 走中转（player 流直连，不额外花钱）。
+- bjcam 上游整站被 CF 拦截（Node 才被拦，浏览器/IDM 正常），网关先直连、遇挑战才转中转；
+  直连能过就不用配 key，被挑战时才需 `SCRAPERAPI_KEY`（player 流直连，不额外花钱）。
 - aqdlt 必须开该源的 proxyMode（上游无 CORS 头，浏览器直连被拦）。
 - **不要再设 `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`**，否则全局内容过滤关闭。
 
