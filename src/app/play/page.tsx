@@ -1797,6 +1797,44 @@ function PlayPageClient() {
   const [corsFailedUrl, setCorsFailedUrl] = useState<string | null>(null);
   // 标记当前视频是否已经尝试过代理（防止 415→直连→失败→代理 的无限循环）
   const proxyAttemptedRef = useRef(false);
+  // 直连卡死看门狗：远端直链 15s 无播放进展，自动切 VPS 中转。
+  // （国内不开 VPN 时，直连境外 CDN 建连 hung 住，HLS 一直重试＝无限转圈，且无 error 事件可接）
+  const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stallArmedUrlRef = useRef<string | null>(null);
+  const disarmStallWatchdog = () => {
+    if (stallTimerRef.current) {
+      clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
+    stallArmedUrlRef.current = null;
+  };
+  const armStallWatchdog = (url: string) => {
+    disarmStallWatchdog();
+    // 仅对远端直链布防：本地文件/已代理（/api/）/blob 不需要
+    if (!/^https?:\/\//i.test(url) || url.includes('/api/') || proxyAttemptedRef.current) return;
+    stallArmedUrlRef.current = url;
+    stallTimerRef.current = setTimeout(() => {
+      stallTimerRef.current = null;
+      const armed = stallArmedUrlRef.current;
+      stallArmedUrlRef.current = null;
+      if (!armed || proxyAttemptedRef.current) return;
+      try {
+        // 期间已切源/切集就不动
+        const cur = (artPlayerRef.current as any)?.url;
+        if (cur && cur !== armed) return;
+      } catch { /* ignore */ }
+      // 切 VPS 全量中转（播放列表＋分片＋密钥全走服务器），并记忆该域名以便下次直走代理
+      const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
+      addDirectplayProxyDomain(armed);
+      proxyAttemptedRef.current = true;
+      setVideoUrl(`/api/proxy-m3u8?url=${encodeURIComponent(armed)}&source=directplay&proxySegments=true${tokenParam}`);
+      setToast({
+        message: '直连加载超时，已切换中转播放',
+        type: 'info',
+        onClose: () => setToast(null),
+      });
+    }, 15000);
+  };
   const videoUrlRequestSeqRef = useRef(0);
   const lastVideoRequestKeyRef = useRef<string | null>(null);
 
@@ -3748,6 +3786,12 @@ function PlayPageClient() {
           // 如果视频源启用了代理模式,且不是本地下载,则通过代理播放
           newUrl = `/api/proxy/vod/m3u8?url=${encodeURIComponent(newUrl)}&source=${encodeURIComponent(currentSource)}`;
           console.log('使用代理模式播放:', newUrl);
+        } else if (newUrl && isM3u8 && !newUrl.includes('/api/') && isDirectplayDomainProxied(newUrl)) {
+          // 该域名曾直连失败被记忆：不再试直连，直接走 VPS 全量中转（列表＋分片）
+          const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
+          newUrl = `/api/proxy-m3u8?url=${encodeURIComponent(newUrl)}&source=directplay&proxySegments=true${tokenParam}`;
+          proxyAttemptedRef.current = true;
+          console.log('域名在失败记忆中，直接使用中转播放:', newUrl);
         } else if (currentSource === 'directplay' && newUrl && isM3u8) {
           // 直链播放模式：检查 localStorage 是否记录了该域名需要代理
           if (isDirectplayDomainProxied(newUrl)) {
@@ -3768,6 +3812,8 @@ function PlayPageClient() {
         return;
       }
       setVideoUrl(newUrl);
+      // 远端直链布防卡死看门狗（本地/已代理地址内部直接返回）
+      armStallWatchdog(newUrl);
     }
     setPlaybackSourceBadge(nextPlaybackSourceBadge);
   };
@@ -4111,6 +4157,8 @@ function PlayPageClient() {
         // 销毁 ArtPlayer 实例
         artPlayerRef.current.destroy();
         artPlayerRef.current = null;
+        // 撤卡死看门狗，避免切集/卸载后误触发
+        disarmStallWatchdog();
         // 清快进提示 timer，避免卸载后 setState
         if (seekHintTimerRef.current) {
           clearTimeout(seekHintTimerRef.current);
@@ -7441,6 +7489,8 @@ function PlayPageClient() {
           syncPlaybackPitch();
         });
         artPlayerRef.current.on('video:playing', () => {
+          // 出画面＝直连是通的，撤卡死看门狗
+          disarmStallWatchdog();
           if (
             isWebkit &&
             Date.now() < playbackRateRestoreWindowUntilRef.current &&
@@ -7836,6 +7886,10 @@ function PlayPageClient() {
 
         // 监听视频时间更新事件，实现跳过片头片尾
         artPlayerRef.current.on('video:timeupdate', () => {
+          // 有播放进度＝流是通的，撤卡死看门狗（放门控前面，跳过开关没开也要撤）
+          try {
+            if ((artPlayerRef.current.currentTime || 0) > 0) disarmStallWatchdog();
+          } catch { /* ignore */ }
           if (!skipConfigRef.current.enable) return;
 
           const currentTime = artPlayerRef.current.currentTime || 0;
@@ -8654,16 +8708,16 @@ function PlayPageClient() {
                             >
                               重试
                             </button>
-                            {/* 直链播放 CORS 失败时，显示"使用代理播放"按钮 */}
-                            {!proxyAttemptedRef.current && (corsFailedUrl || (isDirectPlay && videoUrl && !videoUrl.includes('/api/proxy-m3u8'))) && (
+                            {/* 直连失败时，显示"使用代理播放"按钮（直链源＋自建源远端直链都适用） */}
+                            {!proxyAttemptedRef.current && (corsFailedUrl || (videoUrl && /^https?:\/\//i.test(videoUrl) && !videoUrl.includes('/api/proxy-m3u8'))) && (
                               <button
                                 onClick={() => {
                                   const originalUrl = corsFailedUrl || videoUrl;
                                   // 记忆域名到 localStorage
                                   addDirectplayProxyDomain(originalUrl);
-                                  // 构建代理 URL
+                                  // 构建代理 URL（全量中转：列表＋分片，防止列表通了分片不通）
                                   const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
-                                  const proxyUrl = `/api/proxy-m3u8?url=${encodeURIComponent(originalUrl)}&source=directplay${tokenParam}`;
+                                  const proxyUrl = `/api/proxy-m3u8?url=${encodeURIComponent(originalUrl)}&source=directplay&proxySegments=true${tokenParam}`;
                                   // 清除错误状态并重新播放
                                   setVideoError(null);
                                   setCorsFailedUrl(null);
