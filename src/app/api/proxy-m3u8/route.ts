@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
+import {
+  deleteCachedList,
+  readCachedList,
+  sweepProxyCacheMaybe,
+  writeCachedIdx,
+  writeCachedList,
+} from '@/lib/server/proxy-cache';
 import { validateProxyUrlServerSide } from '@/lib/server/ssrf';
 
 export const runtime = 'nodejs';
@@ -8,10 +15,57 @@ export const runtime = 'nodejs';
 export const maxDuration = 60; // 设置最大执行时间为 60 秒
 
 /**
- * M3U8 代理接口
+ * M3U8 代理接口（VPS 落盘缓存：播放列表短 TTL，分片见 segment 路由长 TTL）
  * 用于外部播放器访问,会执行去广告逻辑并处理相对链接
  * GET /api/proxy-m3u8?url=<原始m3u8地址>&source=<播放源>&token=<鉴权token>
+ * DELETE /api/proxy-m3u8?url=...（同 GET 全套参数）：看完精确清除该列表及已缓存分片
  */
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const m3u8Url = searchParams.get('url');
+    if (!m3u8Url) {
+      return NextResponse.json({ error: '缺少必要参数: url' }, { status: 400 });
+    }
+    const source = searchParams.get('source') || '';
+    const token = searchParams.get('token') || '';
+    const adBlockEnabled = searchParams.get('adblock') !== 'false';
+    const proxySegments = searchParams.get('proxySegments') === 'true';
+    const key = listCacheKey(m3u8Url, source, adBlockEnabled, proxySegments, token);
+    const cleared = deleteCachedList(key);
+    return NextResponse.json({ ok: true, cleared });
+  } catch (error) {
+    return NextResponse.json(
+      { error: '清除缓存失败', details: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+function listCacheKey(
+  url: string,
+  source: string,
+  adBlock: boolean,
+  proxySegments: boolean,
+  token: string
+): string {
+  return [url, source, adBlock ? 'ad' : 'noad', proxySegments ? 'seg' : 'noseg', token].join('|');
+}
+
+/** 从改写后的播放列表里提取经 segment 代理的分片原地址（供索引/精确清除） */
+function collectProxiedSegUrls(rewritten: string): string[] {
+  const out: string[] = [];
+  const re = /\/api\/proxy\/vod\/segment\?url=([^&\s"']+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(rewritten)) !== null) {
+    try {
+      out.push(decodeURIComponent(m[1]));
+    } catch {
+      /* ignore */
+    }
+  }
+  return out;
+}
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -77,6 +131,20 @@ export async function GET(request: NextRequest) {
 
     // 获取原始 m3u8 内容（15 秒超时，失败由播放器直连兜底）
     const m3u8UrlObj = new URL(m3u8Url);
+    sweepProxyCacheMaybe();
+    // 落盘缓存命中直接返回（VPS 上已有该列表，不再回源）
+    const cacheKey = listCacheKey(m3u8Url, source, adBlockEnabled, proxySegments, token || '');
+    const cached = readCachedList(cacheKey);
+    if (cached !== null) {
+      return new NextResponse(cached, {
+        headers: {
+          'Content-Type': 'application/vnd.apple.mpegurl',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache',
+          'X-Proxy-Cache': 'HIT',
+        },
+      });
+    }
     const response = await fetch(m3u8Url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -187,12 +255,19 @@ export async function GET(request: NextRequest) {
       proxySegments
     );
 
+    // 落盘：播放列表＋分片索引（分片本体在 segment 路由边下边存）
+    writeCachedList(cacheKey, m3u8Content);
+    if (proxySegments) {
+      writeCachedIdx(cacheKey, collectProxiedSegUrls(m3u8Content));
+    }
+
     // 返回处理后的 m3u8 内容
     return new NextResponse(m3u8Content, {
       headers: {
         'Content-Type': 'application/vnd.apple.mpegurl',
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-cache',
+        'X-Proxy-Cache': 'MISS',
       },
     });
   } catch (error) {
@@ -313,6 +388,29 @@ function resolveM3u8Links(
 
         // 替换原来的 URI
         line = line.replace(/URI="[^"]+"/, `URI="${keyUri}"`);
+      }
+      resolvedLines.push(line);
+      continue;
+    }
+
+    // 处理 EXT-X-MEDIA 标签中的 URI（多音轨/字幕轨：多为相对地址的 m3u8，
+    // 不改写的话播放器会相对代理地址拼接成 /api/xxx.m3u8 导致 404）
+    if (line.startsWith('#EXT-X-MEDIA:')) {
+      const uriMatch = line.match(/URI="([^"]+)"/);
+      if (uriMatch && uriMatch[1]) {
+        let mediaUri = uriMatch[1];
+        if (!mediaUri.startsWith('http://') && !mediaUri.startsWith('https://')) {
+          if (mediaUri.startsWith('/')) {
+            mediaUri = `${base.protocol}//${base.host}${mediaUri}`;
+          } else {
+            mediaUri = new URL(mediaUri, baseDir).href;
+          }
+        }
+        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+        const adBlockParam = adBlockEnabled ? '' : '&adblock=false';
+        const proxySegmentsParam = proxySegments ? '&proxySegments=true' : '';
+        mediaUri = `${proxyOrigin}/api/proxy-m3u8?url=${encodeURIComponent(mediaUri)}&source=${encodeURIComponent(source)}${tokenParam}${adBlockParam}${proxySegmentsParam}`;
+        line = line.replace(/URI="[^"]+"/, `URI="${mediaUri}"`);
       }
       resolvedLines.push(line);
       continue;

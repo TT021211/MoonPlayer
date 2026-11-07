@@ -1,13 +1,10 @@
-.env
-.env*.local
-public/screenshot1.png
-public/screenshot2.png
-public/screenshot3.png
-
-# Android/TV native app sources are not needed in Docker image builds
-apps/
-
-# 构建机房：依赖由镜像内 pnpm install 重装，本地产物绝不能进上下文
-# （否则会覆盖容器内刚装好的 node_modules，还会把上下文撑到数 GB）
-node_modules
+# 构建上下文排除：本地 .next 增量缓存会导致产物过期（无此文件时 COPY 会带入并复用旧缓存）
 .next
+node_modules
+.git
+.gitignore
+*.log
+coverage
+.nyc_output
+.DS_Store
+Thumbs.db

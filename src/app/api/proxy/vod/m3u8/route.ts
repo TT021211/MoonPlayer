@@ -138,6 +138,17 @@ function rewriteM3U8Content(content: string, baseUrl: string, req: Request, sour
       line = rewriteMapUri(line, baseUrl, proxyBase, source);
     }
 
+    // 处理 EXT-X-MEDIA 标签中的 URI（多音轨/字幕轨多为相对地址的 m3u8，
+    // 不改写播放器会相对代理地址拼接导致 404）——按子 m3u8 走代理
+    if (line.startsWith('#EXT-X-MEDIA:')) {
+      const uriMatch = line.match(/URI="([^"]+)"/);
+      if (uriMatch) {
+        const resolvedUrl = resolveUrl(baseUrl, uriMatch[1]);
+        const proxyUrl = `${proxyBase}/m3u8?url=${encodeURIComponent(resolvedUrl)}&source=${source}`;
+        line = line.replace(uriMatch[0], `URI="${proxyUrl}"`);
+      }
+    }
+
     // 处理 EXT-X-KEY 标签中的 URI
     if (line.startsWith('#EXT-X-KEY:')) {
       line = rewriteKeyUri(line, baseUrl, proxyBase, source);
