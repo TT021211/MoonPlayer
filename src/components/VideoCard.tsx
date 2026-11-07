@@ -109,6 +109,19 @@ export type VideoCardHandle = {
   setDoubanId: (id?: number) => void;
 };
 
+// 自建源（网关/自定义采集站）封面走 VPS 图片代理的判定：
+// source-search 通道全是网关/自定义源；搜索页里只有 douban/tmdb 走各自图床不动。
+function needsVpsPosterProxy(
+  source: string | undefined,
+  from: string | undefined
+): boolean {
+  if (from === 'source-search') return true;
+  if (from === 'search' && source && source !== 'douban' && source !== 'tmdb') {
+    return true;
+  }
+  return false;
+}
+
 const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
   function VideoCard(
     {
@@ -167,15 +180,22 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       </svg>
     `)}`;
     }, []);
-    const processedPoster = useMemo(
-      () =>
-        actualPoster
-          ? processImageUrl(actualPoster)
-          : isNetdiskSource(source)
-          ? netdiskPosterPlaceholder
-          : '',
-      [actualPoster, source, netdiskPosterPlaceholder]
-    );
+    const processedPoster = useMemo(() => {
+      if (!actualPoster) {
+        return isNetdiskSource(source) ? netdiskPosterPlaceholder : '';
+      }
+      const p = processImageUrl(actualPoster);
+      // 自建源（网关/自定义采集站）封面走 VPS 图片代理＋落盘：
+      // 墙区直连上游图床会 hung 住一直转圈。douban/tmdb/已代理地址不动。
+      if (
+        needsVpsPosterProxy(source, from) &&
+        /^https?:\/\//i.test(p) &&
+        !p.startsWith('/api/')
+      ) {
+        return `/api/image-proxy?url=${encodeURIComponent(p)}`;
+      }
+      return p;
+    }, [actualPoster, source, from, netdiskPosterPlaceholder]);
     const [favorited, setFavorited] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);

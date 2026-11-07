@@ -5,6 +5,11 @@ import nodeFetch from 'node-fetch';
 import { NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
+import {
+  readCachedSeg,
+  sweepProxyCacheMaybe,
+  writeCachedSeg,
+} from '@/lib/server/proxy-cache';
 
 export const runtime = 'nodejs';
 
@@ -99,6 +104,24 @@ export async function GET(request: Request) {
   }
 
   try {
+    sweepProxyCacheMaybe();
+    // 落盘缓存：封面图不可变，VPS 存一份（72h），倒回/重进直接读盘
+    const cacheId = `img|${source || ''}|${imageUrl}`;
+    const hit = readCachedSeg(cacheId);
+    if (hit) {
+      const hitHeaders = new Headers();
+      hitHeaders.set('Content-Type', hit.contentType);
+      hitHeaders.set('Cache-Control', 'public, max-age=15720000, s-maxage=15720000');
+      hitHeaders.set('CDN-Cache-Control', 'public, s-maxage=15720000');
+      hitHeaders.set('Vercel-CDN-Cache-Control', 'public, s-maxage=15720000');
+      hitHeaders.set('Netlify-Vary', 'query');
+      hitHeaders.set('X-Proxy-Cache', 'HIT');
+      return new Response(hit.data as unknown as BodyInit, {
+        status: 200,
+        headers: hitHeaders,
+      });
+    }
+
     const imageResponse = await fetchImage(imageUrl, { source });
 
     if (!imageResponse.ok) {
@@ -128,9 +151,16 @@ export async function GET(request: Request) {
     headers.set('CDN-Cache-Control', 'public, s-maxage=15720000');
     headers.set('Vercel-CDN-Cache-Control', 'public, s-maxage=15720000');
     headers.set('Netlify-Vary', 'query');
+    headers.set('X-Proxy-Cache', 'MISS');
 
-    // 直接返回图片流
-    return new Response(imageResponse.body, {
+    // 边下边存（图片小，直接整包缓冲落盘）
+    const buf = Buffer.from(await imageResponse.arrayBuffer());
+    if (buf.length > 0 && buf.length <= 32 * 1024 * 1024) {
+      writeCachedSeg(cacheId, buf, contentType || 'image/jpeg');
+    }
+
+    // 直接返回图片
+    return new Response(buf as unknown as BodyInit, {
       status: 200,
       headers,
     });

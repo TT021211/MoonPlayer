@@ -54,6 +54,9 @@ ENV PORT=3000
 ENV DOCKER_ENV=true
 ENV SQLITE_DB_PATH=/app/.data/moontv.db
 ENV OFFLINE_DOWNLOAD_DIR=/data
+# 补上游缺失的中间/根证书（如 ggjav CDN 的 YE 链）：Node 直连这些站会报证书错
+COPY --from=builder --chown=nextjs:nodejs /app/certs ./certs
+ENV NODE_EXTRA_CA_CERTS=/app/certs/upstream-extra-ca.pem
 
 # 从构建器中复制 standalone 输出
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
