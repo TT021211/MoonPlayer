@@ -1,4 +1,4 @@
-/* kinostream 频道：分类与网关 CATS 保持一致（单页无翻页）。
+/* kinostream 频道：分类与网关 CATS 保持一致（上游分类页一次全量，网关按页切分）。
    客户端组件也能 import，不能引 @/lib/db。 */
 
 export interface KinostreamCategory {

@@ -88,7 +88,7 @@ async function searchWithCache(
             const episode_title_url = title_url.split('$');
             if (
               episode_title_url.length === 2 &&
-              episode_title_url[1].endsWith('.m3u8')
+              isM3u8Url(episode_title_url[1])
             ) {
               matchTitles.push(episode_title_url[0]);
               matchEpisodes.push(episode_title_url[1]);
@@ -202,6 +202,11 @@ export async function searchFromApi(
 // 匹配 m3u8 链接的正则
 const M3U8_PATTERN = /(https?:\/\/[^"'\s]+?\.m3u8)/g;
 
+// 直链常带 token 查询串（如 kinostream 的 ?token=&expires=），判 m3u8 要先去查询串，不能裸 endsWith
+function isM3u8Url(u: string): boolean {
+  return u.split('?')[0].endsWith('.m3u8');
+}
+
 export async function getDetailFromApi(
   apiSite: ApiSite,
   id: string
@@ -254,7 +259,7 @@ export async function getDetailFromApi(
         const episode_title_url = title_url.split('$');
         if (
           episode_title_url.length === 2 &&
-          episode_title_url[1].endsWith('.m3u8')
+          isM3u8Url(episode_title_url[1])
         ) {
           matchTitles.push(episode_title_url[0]);
           matchEpisodes.push(episode_title_url[1]);
@@ -340,7 +345,7 @@ export async function getDetailFromApiV2(
         const episodeTitleUrl = titleUrl.split('$');
         if (
           episodeTitleUrl.length === 2 &&
-          episodeTitleUrl[1].endsWith('.m3u8')
+          isM3u8Url(episodeTitleUrl[1])
         ) {
           matchTitles.push(episodeTitleUrl[0]);
           matchEpisodes.push(episodeTitleUrl[1]);

@@ -116,7 +116,7 @@ function KinostreamPageClient() {
     setSearching(false);
   };
 
-  // 列表 / 搜索（网关单页无翻页，pageCount 恒等于当前页）
+  // 列表 / 搜索（网关按 pg/limit 切页，pageCount 为真实总页数）
   useEffect(() => {
     if (!selectedSource) return;
     if (!searching && !selectedCategory) return;
