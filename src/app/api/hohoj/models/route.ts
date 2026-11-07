@@ -21,7 +21,7 @@ interface CmsModelResponse {
   pagecount?: number;
 }
 
-/* hohoj 女优墙：order=popular（最熱門）| views（最多觀看），pg 翻页 */
+/* hohoj 专用频道人物墙：order=popular（最熱門）| views（最多觀看），pg 翻页 */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const sourceKey = searchParams.get('source');

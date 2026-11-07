@@ -10,7 +10,7 @@ export interface AqdltSource {
 }
 
 /**
- * 找出爱情岛采集源：只认 key/api 里带 aqdlt 关键字（标准建法 key=aqdlt）。
+ * 找出 aqdlt 专用源：只认 key/api 里带 aqdlt 关键字（标准建法 key=aqdlt）。
  * 注意：本站分类名（中文字幕/学生/制服…）在普通站里遍地都是，绝不能用分类名探测，
  * 否则会把正常源误圈进频道。没命中就返回空，频道页会提示去加源。
  */

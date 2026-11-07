@@ -1,4 +1,4 @@
-/* HoHoJ 频道：分类由网关 /api/hohoj/categories 动态下发（见 maccms-hub CATS）。
+/* hohoj 专用频道：分类由网关 /api/hohoj/categories 动态下发（见 maccms-hub CATS）。
    客户端组件也能 import，不能引 @/lib/db（见 duanju.client.ts 注释）。 */
 
 export interface HohojCategory {

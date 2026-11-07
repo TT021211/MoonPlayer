@@ -19,9 +19,9 @@ interface CmsClassResponse {
 }
 
 /**
- * HoHoJ分类：优先用上游 `?ac=list` 返回的 class（采集端升级加分类时自动跟进），
+ * hohoj 专用频道分类：优先用上游 `?ac=list` 返回的 class（采集端升级加分类时自动跟进），
  * 失败/为空时回退到内置 HOHOJ_CATS（13 个，type_id 直接当 t 用）。
- * 注意：这里故意不做黄词过滤——HoHoJ频道本身就是 R18，
+ * 注意：这里故意不做内容过滤——hohoj 专用频道内容本身受限，
  * 是否过滤交给全局 DisableYellowFilter（用户已选全局关闭）。
  */
 export async function GET(request: NextRequest) {

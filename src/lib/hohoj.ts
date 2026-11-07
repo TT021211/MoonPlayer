@@ -12,7 +12,7 @@ export interface HohojSource {
 /**
  * 找出 hohoj 采集源：只认 key/api 里带 hohoj 关键字（标准建法 key=hohoj）。
  * 注意：故意不用分类名探测——「中文字幕」「新作上市」这类名字在普通站里遍地都是，
- * 模糊匹配会把正常源误圈进 HoHoJ 频道。没命中就返回空，频道页会提示去加源。
+ * 模糊匹配会把正常源误圈进 hohoj 专用频道。没命中就返回空，频道页会提示去加源。
  */
 export async function getHohojSources(): Promise<HohojSource[]> {
   try {

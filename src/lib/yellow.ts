@@ -32,7 +32,7 @@ export const yellowWords = [
 export const YELLOW_FILTER_STORAGE_KEY = 'yellowFilterEnabled';
 
 /**
- * 是否应用黄色过滤。优先级：请求参数 ?yellowFilter= > 全局开关。
+ * 是否应用内容过滤。优先级：请求参数 ?yellowFilter= > 全局开关。
  * - yellowFilter=1/true：强制过滤；=0/false：强制不过滤
  * - 无参数时：默认过滤（全局 DisableYellowFilter=true 才关闭）
  */
@@ -45,7 +45,7 @@ export function shouldApplyYellowFilter(
   return !disableYellowFilter;
 }
 
-/** 按 type_name 过滤黄词内容（大小写敏感，与现有各接口行为一致） */
+/** 按 type_name 做内容过滤（大小写敏感，与现有各接口行为一致） */
 export function filterYellowByTypeName<T extends { type_name?: string }>(
   items: T[]
 ): T[] {

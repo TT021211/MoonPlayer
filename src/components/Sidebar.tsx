@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clover, Film, Flame, Globe, Heart, Home, Menu, Search, SquarePlay, Star, Tv, Users } from 'lucide-react';
+import { Blend, Cat, Clover, Film, Flame, Globe, Heart, Home, Menu, MonitorPlay, Search, SquarePlay, Star, Tv, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -166,6 +166,12 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       href: '/hohoj',
     },
     {
+      icon: MonitorPlay,
+      label: 'KinoStream',
+      key: 'kinostream',
+      href: '/kinostream',
+    },
+    {
       icon: Clover,
       label: '综艺',
       key: 'show',
@@ -213,6 +219,12 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
         label: 'HoHoJ',
       key: 'hohoj',
         href: '/hohoj',
+      },
+      {
+        icon: MonitorPlay,
+        label: 'KinoStream',
+        key: 'kinostream',
+        href: '/kinostream',
       },
       {
         icon: Clover,

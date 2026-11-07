@@ -472,9 +472,10 @@ export async function POST(request: NextRequest) {
       await db.deleteGlobalValue('hanime');
       await db.deleteGlobalValue('aqdlt');
       await db.deleteGlobalValue('hohoj');
-      console.log('已清除短剧/hanime/aqdlt/hohoj 视频源缓存');
+      await db.deleteGlobalValue('kinostream');
+      console.log('已清除短剧/hanime/aqdlt/hohoj/kinostream 视频源缓存');
     } catch (error) {
-      console.error('清除短剧/hanime/aqdlt/hohoj 视频源缓存失败:', error);
+      console.error('清除短剧/hanime/aqdlt/hohoj/kinostream 视频源缓存失败:', error);
       // 不影响主流程，继续执行
     }
 

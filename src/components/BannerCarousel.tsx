@@ -130,6 +130,44 @@ export default function BannerCarousel({
     return url;
   };
 
+  // 预告片只挂载当前±1（循环首尾相邻也算）：其余只渲染海报图，
+  // 避免 N 个 video/iframe 同时解码把机器拖死
+  const isNearCurrent = (index: number) => {
+    const n = items.length;
+    if (n === 0) return false;
+    const d = Math.abs(index - currentIndex);
+    return (
+      d <= 1 ||
+      (currentIndex === 0 && index === n - 1) ||
+      (currentIndex === n - 1 && index === 0)
+    );
+  };
+
+  // 切后台时暂停全部预告片，回来再恢复当前（省 CPU/GPU，不后台偷跑）
+  useEffect(() => {
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      if (document.hidden) {
+        videoRefs.current.forEach((video) => {
+          try {
+            video.pause();
+          } catch {
+            /* ignore */
+          }
+        });
+      } else {
+        const currentVideo = videoRefs.current.get(currentIndex);
+        if (currentVideo) {
+          currentVideo.play().catch(() => {
+            // 忽略自动播放失败的错误
+          });
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [currentIndex]);
+
   // 读取本地设置
   useEffect(() => {
     const setting = localStorage.getItem('enableTrailers');
@@ -526,7 +564,7 @@ export default function BannerCarousel({
               index === currentIndex ? 'opacity-100' : 'opacity-0'
             }`}
           >
-            {item.trailer_url && enableTrailers ? (
+            {item.trailer_url && enableTrailers && isNearCurrent(index) ? (
               /* 显示豆瓣直链视频 */
               <div className='absolute inset-0 overflow-hidden'>
                 <video
@@ -545,7 +583,7 @@ export default function BannerCarousel({
                   preload='metadata'
                 />
               </div>
-            ) : item.video_key && isYouTubeAccessible && enableTrailers ? (
+            ) : item.video_key && isYouTubeAccessible && enableTrailers && isNearCurrent(index) ? (
               /* 显示YouTube视频 */
               <div className='absolute inset-0 overflow-hidden'>
                 <iframe

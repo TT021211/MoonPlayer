@@ -13,6 +13,7 @@ export const NAV_CHANNELS: ChannelDef[] = [
   { key: 'aqdlt', label: '爱情岛' },
   { key: 'hohoj', label: 'HoHoJ' },
   { key: 'show', label: '综艺' },
+  { key: 'kinostream', label: 'KinoStream' },
   { key: 'custom', label: '自定义' },
   { key: 'browse', label: '源浏览' },
 ];

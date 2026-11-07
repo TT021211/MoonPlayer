@@ -1,4 +1,4 @@
-/* hanime1-maccms 里番频道：纯静态分类表（与采集端 server.js CATS 保持一致）。
+/* hanime1-maccms hanime 专用频道：纯静态分类表（与采集端 server.js CATS 保持一致）。
    客户端组件也能 import，不能引 @/lib/db（见 duanju.client.ts 注释）。 */
 
 export interface HanimeCategory {

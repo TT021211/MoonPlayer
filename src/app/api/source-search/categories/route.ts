@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 应用黄色过滤器规则（前台 ?yellowFilter= 可覆盖全局开关）
+    // 应用内容过滤器规则（前台 ?yellowFilter= 可覆盖全局开关）
     let filteredCategories = classData.class;
     if (
       shouldApplyYellowFilter(

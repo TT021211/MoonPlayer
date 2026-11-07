@@ -83,7 +83,7 @@ function HohojPageClient() {
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  // 女优墙
+  // 人物墙
   const [view, setView] = useState<'videos' | 'models'>('videos');
   const [modelOrder, setModelOrder] = useState<'popular' | 'views'>('popular');
   const [models, setModels] = useState<HohojModel[]>([]);
@@ -246,7 +246,7 @@ function HohojPageClient() {
     fetchVideos();
   }, [restoreChecked, selectedSource, selectedCategory, currentPage, searching]);
 
-  // 女优墙列表
+  // 人物墙列表
   useEffect(() => {
     if (!restoreChecked || !selectedSource || view !== 'models') return;
     const fetchModels = async () => {
@@ -293,7 +293,7 @@ function HohojPageClient() {
       setView('models');
       return;
     }
-    // 切回影片：若正看着女优作品，回到分类浏览
+    // 切回影片：若正看着人物作品，回到分类浏览
     setView('videos');
     if (selectedModel) {
       setSelectedModel(null);
@@ -459,7 +459,7 @@ function HohojPageClient() {
           </div>
         )}
 
-        {/* 影片 / 女优切换 */}
+        {/* 影片 / 人物切换 */}
         {selectedSource && (
           <div className='flex justify-center mt-2 mb-6'>
             <CapsuleSwitch
@@ -485,7 +485,7 @@ function HohojPageClient() {
           </div>
         )}
 
-        {/* 女优墙 */}
+        {/* 人物墙 */}
         {selectedSource && view === 'models' && (
           <div className='max-w-[95%] mx-auto mt-8'>
             <div className='flex px-4 mb-6'>

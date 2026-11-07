@@ -31,9 +31,9 @@ interface CmsVideoResponse {
 }
 
 /**
- * 里番频道内搜索：只查 hanime 源 (`?ac=list&wd=&pg=`)，
- * 与全站聚合搜索隔离，避免 R18 污染普通搜索（聚合搜索是否混入由 SourceConfig 决定）。
- * 故意不做黄词过滤。
+ * hanime 专用频道内搜索：只查 hanime 源 (`?ac=list&wd=&pg=`)，
+ * 与全站聚合搜索隔离，避免受限内容污染普通搜索（聚合搜索是否混入由 SourceConfig 决定）。
+ * 故意不做内容过滤。
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

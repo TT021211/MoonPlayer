@@ -4249,6 +4249,19 @@ function PlayPageClient() {
         canvas: outputCanvas,
         scale,
         pipelineClass: ModeClass,
+        onDeviceLost: () => {
+          // GPU 扛不住（驱动丢失）：自动关超分并落盘，避免整机卡死
+          cleanupAnime4K().catch(() => {});
+          setAnime4kEnabled(false);
+          try {
+            localStorage.setItem('enable_anime4k', 'false');
+          } catch {
+            /* ignore */
+          }
+          if (artPlayerRef.current) {
+            artPlayerRef.current.notice.show = '显卡扛不住超分，已自动关闭';
+          }
+        },
       });
       console.log('Anime4K渲染器初始化成功');
 

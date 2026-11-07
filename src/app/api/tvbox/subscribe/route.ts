@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
           key: site.key,
           name: site.name,
           type: 1,
-          // 开启去广告或黄色过滤时使用 CMS 代理
+          // 开启去广告或内容过滤时使用 CMS 代理
           api: (adFilter || yellowFilter)
             ? `${baseUrl}/api/cms-proxy?api=${encodeURIComponent(site.api)}${adFilter ? '&adFilter=true' : ''}${yellowFilter ? '&yellowFilter=true' : ''}`
             : site.api,

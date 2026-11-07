@@ -23,6 +23,8 @@ export interface Anime4KRendererOptions {
   scale: number;
   /** Anime4K 模式类，如 anime4k-webgpu 的 ModeA / ModeB ... */
   pipelineClass: Anime4KModeConstructor;
+  /** GPU 设备丢失时回调（驱动崩溃/TDR 前兆）：调用方应清理并关闭超分 */
+  onDeviceLost?: (info: GPUDeviceLostInfo) => void;
 }
 
 export interface Anime4KController {
@@ -117,7 +119,7 @@ async function canCopyExternalImageToTexture(): Promise<boolean> {
 export async function createAnime4KRenderer(
   options: Anime4KRendererOptions
 ): Promise<Anime4KController> {
-  const { video, canvas, scale, pipelineClass } = options;
+  const { video, canvas, scale, pipelineClass, onDeviceLost } = options;
 
   const srcW = video.videoWidth;
   const srcH = video.videoHeight;
@@ -128,6 +130,12 @@ export async function createAnime4KRenderer(
   const outH = Math.floor(srcH * scale);
   if (!outW || !outH || !Number.isFinite(outW) || !Number.isFinite(outH)) {
     throw new Error(`输出Canvas尺寸无效: ${outW}x${outH}, scale: ${scale}`);
+  }
+  // 防卡死：输出超过 4K 时直接拒绝（4x 超分 1080p=8K 画布，核显必崩），提示降倍数
+  if (outW * outH > 3840 * 2160) {
+    throw new Error(
+      `输出分辨率过高（${outW}x${outH}，上限 4K）：请降低超分倍数后重试`
+    );
   }
 
   const adapter = await navigator.gpu.requestAdapter();
@@ -150,8 +158,7 @@ export async function createAnime4KRenderer(
   const context = canvas.getContext('webgpu');
   if (!context) {
     throw new Error('无法获取 WebGPU canvas 上下文');
-  }
-  const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+  }  const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
   context.configure({
     device,
     format: presentationFormat,
@@ -294,6 +301,20 @@ export async function createAnime4KRenderer(
       /* 忽略 */
     }
   };
+
+  // GPU 设备丢失（驱动崩溃/TDR 前兆）：立刻停渲染并通知调用方关闭超分，
+  // 否则循环报错 + 持续占 GPU，会把整机拖死
+  device.lost.then((info) => {
+    if (destroyed) return;
+    // eslint-disable-next-line no-console
+    console.warn('[Anime4K] GPU 设备丢失，自动关闭超分:', info?.message || info);
+    stop();
+    try {
+      onDeviceLost?.(info);
+    } catch {
+      /* 忽略 */
+    }
+  });
 
   return { stop };
 }

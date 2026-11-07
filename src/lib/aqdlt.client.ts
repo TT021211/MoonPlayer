@@ -1,4 +1,4 @@
-/* 爱情岛频道：分类由网关 /api/aqdlt/categories 动态下发（见 maccms-hub CATS）。
+/* aqdlt 专用频道：分类由网关 /api/aqdlt/categories 动态下发（见 maccms-hub CATS）。
    本站暂无站内搜索，频道页不设搜索框。
    客户端组件也能 import，不能引 @/lib/db（见 duanju.client.ts 注释）。 */
 

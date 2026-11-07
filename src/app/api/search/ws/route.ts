@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   }
 
   const config = await getConfig();
-  // 黄色过滤：前台 ?yellowFilter= 可覆盖全局开关，默认开启过滤
+  // 内容过滤：前台 ?yellowFilter= 可覆盖全局开关，默认开启过滤
   const applyYellowFilter = shouldApplyYellowFilter(
     searchParams.get('yellowFilter'),
     config.SiteConfig.DisableYellowFilter
@@ -386,7 +386,7 @@ export async function GET(request: NextRequest) {
           // 添加安全检查，确保结果是数组
           const safeResults = Array.isArray(results) ? results : [];
 
-          // 过滤黄色内容
+          // 过滤受限内容
           let filteredResults = safeResults;
           if (applyYellowFilter) {
             filteredResults = filterYellowByTypeName(safeResults);

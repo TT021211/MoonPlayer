@@ -132,7 +132,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
   const [isFromCache, setIsFromCache] = useState(false);
   // 精确搜索开关
   const [exactSearch, setExactSearch] = useState(true);
-  // 黄色过滤开关（默认开启，localStorage 持久化，拼 ?yellowFilter= 传给搜索接口）
+  // 内容过滤开关（默认开启，localStorage 持久化，拼 ?yellowFilter= 传给搜索接口）
   const [yellowFilterEnabled, setYellowFilterEnabled] = useState(true);
   const handleYellowFilterChange = (enabled: boolean) => {
     setYellowFilterEnabled(enabled);
@@ -151,7 +151,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
   const advancedButtonRefs = useRef<HTMLButtonElement[]>([]);
   const advancedDropdownRefs = useRef<HTMLDivElement[]>([]);
 
-  // 每次请求时重新读取黄色过滤设置（与 fluidSearch 同模式，避免闭包过期）
+  // 每次请求时重新读取内容过滤设置（与 fluidSearch 同模式，避免闭包过期）
   const readYellowFilterParam = () => {
     if (typeof window === 'undefined') return '&yellowFilter=1';
     const saved = localStorage.getItem(YELLOW_FILTER_STORAGE_KEY);
@@ -1132,7 +1132,7 @@ export function SearchPageClient({ searchBase = '/search' }: { searchBase?: stri
         setExactSearch(savedExactSearch === 'true');
       }
 
-      // 读取黄色过滤设置（默认开启）
+      // 读取内容过滤设置（默认开启）
       const savedYellowFilter = localStorage.getItem(
         YELLOW_FILTER_STORAGE_KEY
       );

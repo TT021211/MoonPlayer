@@ -40,20 +40,20 @@
 
 - 🎨 **MuteFun 风格主题**：浅底 + 红橙主色（`src/app/mutefun-theme.css`）。
 - 👆 **播放器双击快进**：左右 26% 热区双击快退/快进（复用方向键步长，默认 10 秒），单击仍是播放/暂停。
-- 👩 **HoHoJ 女优墙**：`/hohoj` 页影片/女优切换，头像圆墙（最熱門/最多觀看＋翻页），点进女优作品流，可返回。
-- 🍞 **分类面包屑**：三个 R18 频道统一面包屑（选中路径＋共 N 个分类，点一下按组展开）；小列表自动平铺胶囊。
-- 🟡 **黄色过滤默认开 + 前台开关**：搜索页“高级”下拉可切换（`?yellowFilter=`，搜索/联想/分类接口全支持）；
-  里番三频道（`/hanime` `/aqdlt` `/hohoj`）专属接口 bypass——**部署时请删掉
+- 👩 **hohoj 人物墙**：`/hohoj` 页影片/人物切换，头像圆墙（最熱門/最多觀看＋翻页），点进人物作品流，可返回。
+- 🍞 **分类面包屑**：`/hanime` `/aqdlt` `/hohoj` 三个专用频道统一面包屑（选中路径＋共 N 个分类，点一下按组展开）；小列表自动平铺胶囊。
+- 🟡 **内容过滤默认开 + 前台开关**：搜索页“高级”下拉可切换（`?yellowFilter=`，搜索/联想/分类接口全支持）；
+  三个专用频道专属接口 bypass——**部署时请删掉
   `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`，否则全局过滤永远关闭**。
 - 🏷️ **自定义分类独立开关**：后台分类管理每行可启用/禁用，即时生效（`refineConfig` 不丢 `disabled` 态）。
-- 🗑️ **MissAV 频道下线**（2026-11-07）：`app/missav` + `api/missav` + `lib/missav*` + 网关 `sites/missav.js` 整组删除，
-  导航/代理 Referer 覆盖/后台缓存清理同步摘除；R18 只剩 `/hanime` `/aqdlt` `/hohoj` 三频道。
+- 🗑️ **已下线频道**（2026-11-07）：`app/missav` + `api/missav` + `lib/missav*` + 网关 `sites/missav.js` 整组删除，
+  导航/代理 Referer 覆盖/后台缓存清理同步摘除；专用频道只剩 `/hanime` `/aqdlt` `/hohoj` 三个。
 
 ### 本轮变更（2026-11-08）
 
 - 🎨 **新内置风格 4 套**：曜石影院（纯黑+琥珀）/ 绯红剧场（红黑）/ 水墨青瓷（青绿）/ 午夜鎏金（藏蓝+金），
   后台个性化配置点选即换（共 11 套）。
-- 🎚️ **频道开关**：后台站点配置新增开关组（电影/剧集/动漫/里番/爱情岛/HoHoJ/综艺/自定义/源浏览），
+- 🎚️ **频道开关**：后台站点配置新增开关组（电影/剧集/动漫/综艺/自定义 + `/hanime` `/aqdlt` `/hohoj` `/kinostream` 四个专用频道），
   关掉的频道不在双端导航展示，直接访问地址不受影响。
 - 🕘 **播放记录入口**：首页“继续观看”段移除，桌面+移动顶栏加历史图标，点击弹全部记录（点条目继续播）。
 - 🗑️ **弹幕整组删除**：播放页加载器/插件/选择器/过滤弹窗/热力图/缓存（约 -1500 行）+ `api/danmaku*` +
@@ -73,13 +73,13 @@
 观影室（含 WatchRoomProvider/hooks/socket/DO）、WebTV（`/tv`）、电视/网络直播、追番订阅（含豆瓣每日放送）、
 磁力搜索（ACG）/网盘搜索（Pansou）/源站寻片旧页、短剧、漫画/书/音乐、私人影库入口、AI 问片与 AI/豆瓣评论、
 通知中心（含邮件/推送/Telegram 设置）、服务器离线下载、Telegram 登录/绑定、6 外部播放器按钮（PotPlayer/VLC/MPV/MX/nPlayer/IINA）、
-转码/快捷键/HLS 切换入口、播放页推荐区、MissAV 频道（含网关适配器）、弹幕全套（含后端路由/缓存/过滤/热力图/依赖）、
+转码/快捷键/HLS 切换入口、播放页推荐区、已下线频道（含网关适配器）、弹幕全套（含后端路由/缓存/过滤/热力图/依赖）、
 源浏览（/browse）路由。
 后台同步精简：只留配置文件 / 站点配置 / 注册配置 / 个性化 / 用户管理 / 视频源 / 源脚本 / 分类 / 去广告 / 数据迁移。
 
 ## ✨ 功能特性
 
-- 🔍 **多源聚合搜索**：一次搜索立刻返回全源结果（默认开黄色过滤，前台可关）。
+- 🔍 **多源聚合搜索**：一次搜索立刻返回全源结果（默认开内容过滤，前台可关）。
 - 📄 **丰富详情页**：支持剧集列表、演员、年份、简介等完整信息展示。
 - ▶️ **流畅在线播放**：集成 HLS.js & ArtPlayer；手势：单击只显控制栏，双击中区暂停/播放，双击左右快退/快进；iOS 默认原生全屏。
 - ❤️ **收藏 + 继续观看**：支持 Kvrocks/Redis/Upstash 存储，多端同步进度（顶栏历史图标查看全部记录）。
@@ -470,15 +470,16 @@ volumes:
 
 ```
 源管理 → 自定义源（示例，内网地址按实际部署改）：
-  key: hanime1, api: http://maccms-hub:3001/hanime1/api.php/provide/vod
-  key: aqdlt,   api: http://maccms-hub:3001/aqdlt/api.php/provide/vod     + 开 proxyMode
-  key: hohoj,   api: http://maccms-hub:3001/hohoj/api.php/provide/vod
+  key: hanime1,    api: http://maccms-hub:3001/hanime1/api.php/provide/vod
+  key: aqdlt,      api: http://maccms-hub:3001/aqdlt/api.php/provide/vod     + 开 proxyMode
+  key: hohoj,      api: http://maccms-hub:3001/hohoj/api.php/provide/vod
+  key: kinostream, api: http://maccms-hub:3001/kinostream/api.php/provide/vod
 ```
 
-- 三个 R18 频道（`/hanime` `/aqdlt` `/hohoj`）走专属接口，不受黄色过滤影响；
-  通用自定义源走 `/browse` 页浏览（分类取自各源真实 `?ac=list`，受黄色过滤）。
+- `/hanime` `/aqdlt` `/hohoj` 三个专用频道走专属接口，不受内容过滤影响；
+  `/kinostream` 走通用自定义源（搜索页源站寻片 + 聚合搜索，分类取自各源真实 `?ac=list`，受内容过滤）。
 - aqdlt 必须开该源的 proxyMode（上游无 CORS 头，浏览器直连被拦）。
-- **不要再设 `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`**，否则全局黄滤关闭。
+- **不要再设 `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`**，否则全局内容过滤关闭。
 
 ## 配置文件
 
@@ -558,7 +559,7 @@ dockge/komodo 等 docker compose UI 也有自动更新功能
 | NEXT_PUBLIC_DOUBAN_PROXY                 | 自定义豆瓣数据代理 URL                                       | url prefix                  | (空)                                                         |
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE      | 豆瓣图片代理类型                                             | 见下方                      | direct                                                       |
 | NEXT_PUBLIC_DOUBAN_IMAGE_PROXY           | 自定义豆瓣图片代理 URL                                       | url prefix                  | (空)                                                         |
-| NEXT_PUBLIC_DISABLE_YELLOW_FILTER        | 关闭色情内容过滤（本 fork 请保持 false/不设；R18 三频道不受影响） | true/false                  | false                                                        |
+| NEXT_PUBLIC_DISABLE_YELLOW_FILTER        | 关闭内容过滤（本 fork 请保持 false/不设；三个专用频道不受影响） | true/false                  | false                                                        |
 | NEXT_PUBLIC_FLUID_SEARCH                 | 是否开启搜索接口流式输出                                     | true/ false                 | true                                                         |
 | NEXT_PUBLIC_PROXY_M3U8_TOKEN             | M3U8 代理 API 鉴权 Token（外部播放器跳转时的鉴权token，不填为无鉴权） | 任意字符串                  | (空)                                                         |
 | ENABLE_TV_MODE                           | 是否启用 TV 模式；设为 false 后 /tv 不可访问，且不启动电视遥控 Socket.IO 监听 | true/false                  | true                                                         |

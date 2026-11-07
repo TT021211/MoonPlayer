@@ -19,9 +19,9 @@ interface CmsClassResponse {
 }
 
 /**
- * 里番分类：优先用上游 `?ac=list` 返回的 class（采集端升级加分类时自动跟进），
+ * hanime 专用频道分类：优先用上游 `?ac=list` 返回的 class（采集端升级加分类时自动跟进），
  * 失败/为空时回退到内置 HANIME_CATS（13 个，type_id 直接当 t 用）。
- * 注意：这里故意不做黄词过滤——里番频道本身就是 R18，
+ * 注意：这里故意不做内容过滤——hanime 专用频道内容本身受限，
  * 是否过滤交给全局 DisableYellowFilter（用户已选全局关闭）。
  */
 export async function GET(request: NextRequest) {

@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 女优作品通道：categoryId=`model-<mid>` 时走网关 ac=model-videos
+    // 人物作品通道：categoryId=`model-<mid>` 时走网关 ac=model-videos
     const modelMatch = /^model-(\d+)$/.exec(categoryId);
     const response = await fetch(
       modelMatch
