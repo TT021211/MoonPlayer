@@ -272,6 +272,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('代理 m3u8 失败:', error);
+    // 片源服务器拒连（常驻防火墙白名单，如部分 HoHoJ 视频机）：给明确提示而不是裸 500
+    const msg = String((error as any)?.cause || error || '');
+    if (/ECONNREFUSED|EHOSTUNREACH|ENETUNREACH/.test(msg)) {
+      return NextResponse.json(
+        { error: '片源服务器拒绝当前网络连接，换一部试试' },
+        { status: 502 }
+      );
+    }
     return NextResponse.json(
       { error: '代理失败', details: (error as Error).message },
       { status: 500 }

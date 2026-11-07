@@ -220,6 +220,14 @@ export async function GET(request: Request) {
       }
     }
 
+    // 片源服务器拒连（常驻防火墙白名单）：给明确提示而不是裸 500
+    const segErr = String((error as any)?.cause || error || '');
+    if (/ECONNREFUSED|EHOSTUNREACH|ENETUNREACH/.test(segErr)) {
+      return NextResponse.json(
+        { error: '片源服务器拒绝当前网络连接，换一部试试' },
+        { status: 502 }
+      );
+    }
     return NextResponse.json({ error: 'Failed to fetch segment' }, { status: 500 });
   }
 }
