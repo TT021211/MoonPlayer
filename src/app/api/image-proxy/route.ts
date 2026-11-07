@@ -61,11 +61,24 @@ async function fetchImage(
 ): Promise<Response> {
   const isBangumiImage =
     options?.source === 'bangumi' || isBangumiImageUrl(imageUrl);
+  // Referer 策略：bangumi 走 bgm.tv；douban 沿用 movie.douban.com；
+  // 其余一律用图片自身源站（部分图床如 sexbjcam 开防盗链，外站 Referer 直接 403）。
+  let referer = 'https://movie.douban.com/';
+  try {
+    const u = new URL(imageUrl);
+    if (isBangumiImage) {
+      referer = 'https://bgm.tv/';
+    } else if (!u.hostname.includes('doubanio.com')) {
+      referer = `${u.protocol}//${u.host}/`;
+    }
+  } catch {
+    /* ignore */
+  }
   const headers = {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-    Referer: isBangumiImage ? 'https://bgm.tv/' : 'https://movie.douban.com/',
+    Referer: referer,
   };
 
   const config = isBangumiImage ? await getConfig() : null;
