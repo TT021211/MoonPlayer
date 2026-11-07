@@ -284,7 +284,7 @@ function MissavPageClient() {
         <div className='mb-6 flex items-start justify-between gap-4'>
           <div>
             <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>MissAV</h1>
-            <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>missav 自建源（ScraperAPI 中转） · 13 个分类 · 内容来自第三方</p>
+            <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>missav 自建源（ScraperAPI 中转） · {categories.length > 0 ? `${categories.length} 个分类` : ''} · 内容来自第三方</p>
           </div>
           <Link
             href='/'
