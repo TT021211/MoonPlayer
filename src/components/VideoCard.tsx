@@ -1373,7 +1373,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               actualEpisodes > 1 &&
               orientation === 'vertical' && (
                 <div
-                  className='absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-0.5 sm:gap-1.5'
+                  // 右上角已有评分锦旗时，集数/年份叠堆改放左上，避免重叠
+                  className={`absolute top-1 sm:top-2 flex flex-col gap-0.5 sm:gap-1.5 ${config.showRating && rate ? 'left-1 sm:left-2' : 'right-1 sm:right-2'}`}
                   style={
                     {
                       WebkitUserSelect: 'none',

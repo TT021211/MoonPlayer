@@ -1610,6 +1610,16 @@ function PlayPageClient() {
   // 手势规范：单击全区只显控制栏（不暂停/不播放）；双击中区暂停/播放；双击两侧快退/快进
   const lastSideTapRef = useRef<{ side: 'left' | 'right'; time: number }>({ side: 'left', time: 0 });
   const lastCenterTapRef = useRef<number>(0);
+  // 最近一次 touchend 时间戳：触摸后 500ms 内的合成鼠标事件（click/dblclick）一律忽略，
+  // 触摸计时器逻辑已处理，避免一次手势触发两次（iOS 双击不变就是这么来的）。
+  const lastTouchEndRef = useRef<number>(0);
+  const markTouchEnd = () => {
+    lastTouchEndRef.current = Date.now();
+  };
+  const shouldIgnoreMouseEvent = () => Date.now() - lastTouchEndRef.current < 500;
+  // 快进/快退 transient 提示：自管理显隐（1.2s 自动消失），不依赖 Artplayer notice。
+  const [seekHint, setSeekHint] = useState<{ side: 'left' | 'right'; text: string; key: number } | null>(null);
+  const seekHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekBySide = (side: 'left' | 'right') => {
     const player = artPlayerRef.current;
     if (!player) return;
@@ -1620,9 +1630,12 @@ function PlayPageClient() {
       dir,
       seekStepSecondsRef.current
     );
-    player.notice.show = `${dir === 1 ? '快进' : '快退'} ${formatQuickForwardDuration(
+    const text = `${dir === 1 ? '快进' : '快退'} ${formatQuickForwardDuration(
       seekStepSecondsRef.current
     )}`;
+    if (seekHintTimerRef.current) clearTimeout(seekHintTimerRef.current);
+    setSeekHint({ side, text, key: Date.now() });
+    seekHintTimerRef.current = setTimeout(() => setSeekHint(null), 1200);
   };
   const showPlayerControls = () => {
     try {
@@ -1643,6 +1656,7 @@ function PlayPageClient() {
   const handleSideTouchEnd = (side: 'left' | 'right') => {
     const player = artPlayerRef.current;
     if (!player) return;
+    markTouchEnd();
     const now = Date.now();
     const last = lastSideTapRef.current;
     if (last.side === side && now - last.time < 300) {
@@ -1656,6 +1670,7 @@ function PlayPageClient() {
   const handleCenterTouchEnd = () => {
     const player = artPlayerRef.current;
     if (!player) return;
+    markTouchEnd();
     const now = Date.now();
     if (now - lastCenterTapRef.current < 300) {
       lastCenterTapRef.current = 0;
@@ -4096,6 +4111,11 @@ function PlayPageClient() {
         // 销毁 ArtPlayer 实例
         artPlayerRef.current.destroy();
         artPlayerRef.current = null;
+        // 清快进提示 timer，避免卸载后 setState
+        if (seekHintTimerRef.current) {
+          clearTimeout(seekHintTimerRef.current);
+          seekHintTimerRef.current = null;
+        }
 
         // 清空 DOM 容器，确保没有残留元素
         if (artRef.current) {
@@ -8499,11 +8519,16 @@ function PlayPageClient() {
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
+                        // 触摸后的合成 click 直接忽略（touchend 已处理），防一次手势双响
+                        if (shouldIgnoreMouseEvent()) return;
                         showPlayerControls();
                       }}
                       onDoubleClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        // 触摸设备上 dblclick 紧跟两次 touchend，触摸计时器已 seek，这里必须跳过，
+                        // 否则一次双击跳两步；桌面鼠标无 touchend，不受影响
+                        if (shouldIgnoreMouseEvent()) return;
                         seekBySide('left');
                       }}
                       onTouchEnd={(e) => {
@@ -8511,21 +8536,33 @@ function PlayPageClient() {
                         handleSideTouchEnd('left');
                       }}
                       title='双击快退'
+                      style={{ touchAction: 'manipulation' }}
                       className='absolute left-[2%] top-[20%] h-[60%] w-[26%] z-10 rounded-lg cursor-pointer group/seek'
                     >
                       <span className='absolute left-2 top-1/2 -translate-y-1/2 text-white/0 group-hover/seek:text-white/70 text-sm font-medium select-none transition-colors'>
                         ◀◀ 快退
                       </span>
+                      {seekHint?.side === 'left' && (
+                        <span
+                          key={seekHint.key}
+                          className='absolute left-2 top-1/2 -translate-y-1/2 text-white text-sm font-medium select-none bg-black/50 rounded px-2 py-1 pointer-events-none'
+                        >
+                          {seekHint.text}
+                        </span>
+                      )}
                     </div>
                     {/* 中区：单击只显控制栏，双击暂停/播放 */}
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (shouldIgnoreMouseEvent()) return;
                         showPlayerControls();
                       }}
                       onDoubleClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        // 同上：触摸双击已由计时器 toggle，这里跳过，桌面鼠标正常走
+                        if (shouldIgnoreMouseEvent()) return;
                         togglePlayPause();
                       }}
                       onTouchEnd={(e) => {
@@ -8533,16 +8570,19 @@ function PlayPageClient() {
                         handleCenterTouchEnd();
                       }}
                       title='双击暂停/播放'
+                      style={{ touchAction: 'manipulation' }}
                       className='absolute left-[28%] top-[20%] h-[60%] w-[44%] z-10 rounded-lg cursor-pointer'
                     />
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (shouldIgnoreMouseEvent()) return;
                         showPlayerControls();
                       }}
                       onDoubleClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        if (shouldIgnoreMouseEvent()) return;
                         seekBySide('right');
                       }}
                       onTouchEnd={(e) => {
@@ -8550,11 +8590,20 @@ function PlayPageClient() {
                         handleSideTouchEnd('right');
                       }}
                       title='双击快进'
+                      style={{ touchAction: 'manipulation' }}
                       className='absolute right-[2%] top-[20%] h-[60%] w-[26%] z-10 rounded-lg cursor-pointer group/seek'
                     >
                       <span className='absolute right-2 top-1/2 -translate-y-1/2 text-white/0 group-hover/seek:text-white/70 text-sm font-medium select-none transition-colors'>
                         快进 ▶▶
                       </span>
+                      {seekHint?.side === 'right' && (
+                        <span
+                          key={seekHint.key}
+                          className='absolute right-2 top-1/2 -translate-y-1/2 text-white text-sm font-medium select-none bg-black/50 rounded px-2 py-1 pointer-events-none'
+                        >
+                          {seekHint.text}
+                        </span>
+                      )}
                     </div>
                   </>
                 )}

@@ -48,6 +48,16 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
   }
+
+  /* 移动端隐藏页面级滚动条（部分 WebView 不自动隐藏，影响观感）；桌面端不动 */
+  @media (max-width: 767px) {
+    html {
+      scrollbar-width: none;
+    }
+    html::-webkit-scrollbar {
+      display: none;
+    }
+  }
 }
 
 :root {

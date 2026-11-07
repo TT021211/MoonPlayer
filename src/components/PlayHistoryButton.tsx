@@ -2,10 +2,13 @@
 
 import { History } from 'lucide-react';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import PlayRecordsPanel from './PlayRecordsPanel';
 
 // 右上角播放记录入口：点击打开全部播放记录弹窗，点条目继续观看。
+// 面板经 portal 挂到 body：MobileHeader 有 backdrop-blur（会成为 fixed 定位的包含块），
+// 内联渲染会导致弹窗相对顶栏定位、移动端错位到看不见关闭按钮。
 export default function PlayHistoryButton() {
   const [open, setOpen] = useState(false);
 
@@ -20,9 +23,12 @@ export default function PlayHistoryButton() {
       >
         <History className='w-full h-full' />
       </button>
-      {open && (
-        <PlayRecordsPanel isOpen={open} onClose={() => setOpen(false)} />
-      )}
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <PlayRecordsPanel isOpen={open} onClose={() => setOpen(false)} />,
+          document.body
+        )}
     </>
   );
 }
