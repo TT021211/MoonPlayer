@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clover, Film, Flame, Globe, Heart, Home, MonitorPlay, SquarePlay, Star, Tv, Users } from 'lucide-react';
+import { Blend, Cat, Clapperboard, Clover, Film, Flame, Globe, Heart, Home, MonitorPlay, SquarePlay, Star, Tv, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -70,6 +70,12 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       href: '/kinostream',
     },
     {
+      icon: Clapperboard,
+      label: 'BJ剧场',
+      key: 'bjcam',
+      href: '/bjcam',
+    },
+    {
       icon: Clover,
       label: '综艺',
       key: 'show',
@@ -124,6 +130,12 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         label: 'KinoStream',
         key: 'kinostream',
         href: '/kinostream',
+      },
+      {
+        icon: Clapperboard,
+        label: 'BJ剧场',
+        key: 'bjcam',
+        href: '/bjcam',
       },
       {
         icon: Clover,

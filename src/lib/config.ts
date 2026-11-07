@@ -918,6 +918,31 @@ export async function getCacheTime(): Promise<number> {
   return config.SiteConfig.SiteInterfaceCacheTime || 7200;
 }
 
+// 内置源兜底：bjcam 未在后台配置时，从已配网关源派生地址，频道零配置可用。
+// 派生规则：找 api 形如 <hub>/某站/api.php/provide/vod 的源，复用其 hub host
+// （hanime1 那种单站直连形 api 没有网关 host，跳过）。
+function appendBuiltinSourceFallbacks<
+  T extends { key: string; api: string; name: string },
+>(sites: T[]): T[] {
+  if (sites.some((s) => s.key === 'bjcam')) return sites;
+  const hub = sites
+    .map((s) =>
+      (s.api || '').match(
+        /^(https?:\/\/[^/]+)\/[a-z0-9-]+\/api\.php\/provide\/vod\/?$/i
+      )
+    )
+    .find((m) => !!m);
+  if (!hub) return sites;
+  return [
+    ...sites,
+    {
+      key: 'bjcam',
+      name: 'BJ剧场',
+      api: `${hub[1]}/bjcam/api.php/provide/vod`,
+    } as T,
+  ];
+}
+
 export async function getAvailableApiSites(
   user?: string,
   specialOnly = false
@@ -927,8 +952,8 @@ export async function getAvailableApiSites(
   // 双向隔离：普通入口只给普通源，/under 入口只给特殊源
   const filterSpecialSources = <T extends { key: string }>(sites: T[]): T[] =>
     sites.filter((site) => specialSourceSet.has(site.key) === specialOnly);
-  const allApiSites = filterSpecialSources(
-    config.SourceConfig.filter((s) => !s.disabled)
+  const allApiSites = appendBuiltinSourceFallbacks(
+    filterSpecialSources(config.SourceConfig.filter((s) => !s.disabled))
   );
 
   if (!user) {

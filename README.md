@@ -53,7 +53,7 @@
 
 - 🎨 **新内置风格 4 套**：曜石影院（纯黑+琥珀）/ 绯红剧场（红黑）/ 水墨青瓷（青绿）/ 午夜鎏金（藏蓝+金），
   后台个性化配置点选即换（共 11 套）。
-- 🎚️ **频道开关**：后台站点配置新增开关组（电影/剧集/动漫/综艺/自定义 + `/hanime` `/aqdlt` `/hohoj` `/kinostream` 四个专用频道），
+- 🎚️ **频道开关**：后台站点配置新增开关组（电影/剧集/动漫/综艺/自定义 + `/hanime` `/aqdlt` `/hohoj` `/kinostream` `/bjcam` 五个专用频道），
   关掉的频道不在双端导航展示，直接访问地址不受影响。
 - 🕘 **播放记录入口**：首页“继续观看”段移除，桌面+移动顶栏加历史图标，点击弹全部记录（点条目继续播）。
 - 🗑️ **弹幕整组删除**：播放页加载器/插件/选择器/过滤弹窗/热力图/缓存（约 -1500 行）+ `api/danmaku*` +
@@ -474,10 +474,12 @@ volumes:
   key: aqdlt,      api: http://maccms-hub:3001/aqdlt/api.php/provide/vod     + 开 proxyMode
   key: hohoj,      api: http://maccms-hub:3001/hohoj/api.php/provide/vod
   key: kinostream, api: http://maccms-hub:3001/kinostream/api.php/provide/vod
+  key: bjcam,      api: http://maccms-hub:3001/bjcam/api.php/provide/vod     （可不加：前端从已配网关源自动派生）
 ```
 
 - `/hanime` `/aqdlt` `/hohoj` 三个专用频道走专属接口，不受内容过滤影响；
-  `/kinostream` 走通用自定义源（搜索页源站寻片 + 聚合搜索，分类取自各源真实 `?ac=list`，受内容过滤）。
+  `/kinostream` `/bjcam` 走通用自定义源（搜索页源站寻片 + 聚合搜索，分类取自各源真实 `?ac=list`，受内容过滤）。
+- bjcam 上游整站被 CF 拦截，网关需配 `SCRAPERAPI_KEY` 走中转（player 流直连，不额外花钱）。
 - aqdlt 必须开该源的 proxyMode（上游无 CORS 头，浏览器直连被拦）。
 - **不要再设 `NEXT_PUBLIC_DISABLE_YELLOW_FILTER=true`**，否则全局内容过滤关闭。
 
