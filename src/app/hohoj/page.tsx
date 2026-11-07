@@ -394,7 +394,7 @@ function HohojPageClient() {
       <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10'>
         <div className='mb-6 flex items-start justify-between gap-4'>
           <div>
-            <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>HoHoJ</h1>
+            <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>HoHo剧场</h1>
             <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>hohoj 自建源 · {categories.length > 0 ? `${categories.length} 个分类` : ''} · 内容来自第三方</p>
           </div>
           <Link
@@ -446,7 +446,7 @@ function HohojPageClient() {
                 <input
                   ref={searchInputRef}
                   defaultValue={keyword}
-                  placeholder='在HoHoJ频道内搜索…'
+                  placeholder='在HoHo剧场频道内搜索…'
                   className='w-full rounded-lg border border-gray-200 bg-white/80 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
                   onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
                 />
@@ -542,7 +542,7 @@ function HohojPageClient() {
           <div className='max-w-[95%] mx-auto mt-8'>
             <div className='mb-4 flex items-center gap-3'>
               <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                {searching ? `搜索：${keyword}` : selectedModel ? selectedModel.name : categories.find((c) => c.id === selectedCategory)?.name || 'HoHoJ列表'}
+                {searching ? `搜索：${keyword}` : selectedModel ? selectedModel.name : categories.find((c) => c.id === selectedCategory)?.name || 'HoHo剧场列表'}
               </h2>
               {selectedModel && !searching && (
                 <button

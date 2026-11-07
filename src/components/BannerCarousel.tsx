@@ -524,7 +524,7 @@ export default function BannerCarousel({
       >
         <Image
           src='/logo.png'
-          alt='MoonTVPlus'
+          alt='MoonPlayer'
           width={120}
           height={120}
           className='opacity-50'

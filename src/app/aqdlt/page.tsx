@@ -251,7 +251,7 @@ function AqdltPageClient() {
       <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10'>
         <div className='mb-6 flex items-start justify-between gap-4'>
           <div>
-            <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>爱情岛</h1>
+            <h1 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>心动剧场</h1>
             <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>aqdlt 自建源 · {categories.length > 0 ? `${categories.length} 个分类` : ''} · 内容来自第三方</p>
           </div>
           <Link
@@ -272,7 +272,7 @@ function AqdltPageClient() {
             </div>
           ) : sources.length === 0 ? (
             <div className='rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300'>
-              未找到爱情岛采集源。请先去后台「源管理 → 添加自定义源」加
+              未找到心动剧场采集源。请先去后台「源管理 → 添加自定义源」加
               <code className='mx-1 rounded bg-red-100 px-1 dark:bg-red-900'>key: aqdlt, api: http://maccms-hub:3001/aqdlt/api.php/provide/vod</code>
               ，再点「清除缓存」/ 重启 moontv-core。
             </div>
@@ -310,7 +310,7 @@ function AqdltPageClient() {
           <div className='max-w-[95%] mx-auto mt-8'>
             <div className='mb-4'>
               <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                {categories.find((c) => c.id === selectedCategory)?.name || '爱情岛列表'}
+                {categories.find((c) => c.id === selectedCategory)?.name || '心动剧场列表'}
               </h2>
             </div>
             {isLoadingVideos && currentPage === 1 ? (

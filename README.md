@@ -1,10 +1,10 @@
-# MoonTVPlus
+# MoonPlayer
 
 <div align="center">
-  <img src="public/logo.png" alt="MoonTVPlus Logo" width="120">
+  <img src="public/logo.png" alt="MoonPlayer Logo" width="120">
 </div>
 
-> 🎬 **MoonTVPlus** 是基于 [MoonTV v100](https://github.com/MoonTechLab/LunaTV) 二次开发的增强版影视聚合播放器。它在原版基础上新增了外部播放器支持、视频超分等实用功能，提供更强大的观影体验。
+> 🎬 **MoonPlayer** 是基于 [MoonTV v100](https://github.com/MoonTechLab/LunaTV) 二次开发的增强版影视聚合播放器。它在原版基础上新增了外部播放器支持、视频超分等实用功能，提供更强大的观影体验。
 > 本 fork 已移除弹幕系统（见下“本轮变更”）。
 >
 > **本 fork（TT021211）是个人精简版**：只保留搜索 / 浏览 / 详情 / 播放 / 收藏 / 下载核心链路，
@@ -132,9 +132,9 @@
 
 本项目**支持 Docker、Vercel、Netlify、Cloudflare Workers 和 EdgeOne Pages 平台** 部署。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/mtvpls/MoonTVPlus)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/TT021211/MoonPlayer)
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/mtvpls/MoonTVPlus)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/TT021211/MoonPlayer)
 
 **一键部署到 Zeabur**
 
@@ -142,7 +142,7 @@
 
 **一键部署到 Render**
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mtvpls/MoonTVPlus)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/TT021211/MoonPlayer)
 
 
 
