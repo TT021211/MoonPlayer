@@ -576,6 +576,7 @@ function HohojPageClient() {
                         year={item.year}
                         from='source-search'
                         type='tv'
+                        posterAspect='aspect-[3/2]'
                         cmsData={{ desc: item.desc, episodes: item.episodes, episodes_titles: item.episodes_titles }}
                         onBeforeNavigate={saveSnapshot}
                       />

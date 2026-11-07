@@ -91,6 +91,7 @@ export interface VideoCardProps {
   seasonNumber?: number; // 季度编号
   seasonName?: string; // 季度名称
   orientation?: 'vertical' | 'horizontal'; // 卡片方向
+  posterAspect?: string; // 海报框比例（如 aspect-[3/2]），默认按 orientation；横图源（hohoj 3:2 封面）传横比避免裁残
   playTime?: number; // 当前播放时间（秒）
   totalTime?: number; // 总时长（秒）
   cmsData?: {
@@ -138,6 +139,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       seasonNumber,
       seasonName,
       orientation = 'vertical',
+      posterAspect,
       playTime,
       totalTime,
       cmsData,
@@ -152,6 +154,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [showDetailPanel, setShowDetailPanel] = useState(false);
     const actualTitle = title;
     const actualPoster = poster;
+    const posterAspectClass =
+      posterAspect ||
+      (orientation === 'horizontal' ? 'aspect-[3/2]' : 'aspect-[2/3]');
     const netdiskPosterPlaceholder = useMemo(() => {
       return `data:image/svg+xml;utf8,${encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600">
@@ -973,7 +978,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
                 : ''
             } ${
-              orientation === 'horizontal' ? 'aspect-[3/2]' : 'aspect-[2/3]'
+              posterAspectClass
             }`}
             style={
               {
@@ -992,11 +997,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               {/* 骨架屏 */}
               {!isLoading && !isDirectPlaySource && (
                 <ImagePlaceholder
-                  aspectRatio={
-                    orientation === 'horizontal'
-                      ? 'aspect-[3/2]'
-                      : 'aspect-[2/3]'
-                  }
+                  aspectRatio={posterAspectClass}
                 />
               )}
               {isDirectPlaySource ? (
