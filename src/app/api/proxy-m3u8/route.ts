@@ -157,6 +157,11 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
+      try {
+        console.warn(`[proxy-m3u8] upstream ${response.status} host=${m3u8UrlObj.host}`);
+      } catch {
+        /* ignore */
+      }
       return NextResponse.json(
         { error: '获取 m3u8 文件失败' },
         { status: response.status }

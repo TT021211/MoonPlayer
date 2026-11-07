@@ -97,6 +97,12 @@ export async function GET(request: Request) {
       },
     });
     if (!response.ok) {
+      // 记上游 host＋状态（不记 token 查询串），方便定位是墙/拒连还是地址过期
+      try {
+        console.warn(`[proxy-seg] upstream ${response.status} host=${new URL(decodedUrl).host}`);
+      } catch {
+        /* ignore */
+      }
       return NextResponse.json({ error: 'Failed to fetch segment' }, { status: 500 });
     }
 
