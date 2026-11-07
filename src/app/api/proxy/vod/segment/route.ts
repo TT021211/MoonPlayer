@@ -96,9 +96,10 @@ export async function GET(request: Request) {
       'Referer': buildUpstreamReferer(source, decodedUrl),
     });
     if (!response.ok) {
-      // 记上游 host＋状态（不记 token 查询串），方便定位是墙/拒连还是地址过期
+      // 记上游 host＋路径（不记 token 查询串），方便定位是墙/拒连还是地址过期
       try {
-        console.warn(`[proxy-seg] upstream ${response.status} host=${new URL(decodedUrl).host}`);
+        const u = new URL(decodedUrl);
+        console.warn(`[proxy-seg] upstream ${response.status} host=${u.host} path=${u.pathname.slice(0, 100)}`);
       } catch {
         /* ignore */
       }
