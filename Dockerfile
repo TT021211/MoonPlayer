@@ -65,7 +65,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 COPY --from=builder --chown=nextjs:nodejs /app/start.js ./start.js
 # 从构建器中复制自定义 server.js（Socket.IO 仅在观影室内置模式启用时使用，默认关闭）
 COPY --from=builder --chown=nextjs:nodejs /app/server.js ./server.js
-# 从构建器中复制自定义 server.js（Socket.IO 仅在观影室内置模式启用时使用，默认关闭）
 # 从构建器中复制 public 和 .next/static 目录
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
