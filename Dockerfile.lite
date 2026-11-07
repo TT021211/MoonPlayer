@@ -55,7 +55,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # 补上游缺失的中间/根证书（如 ggjav CDN 的 YE 链）：Node 直连这些站会报证书错
 COPY --from=builder --chown=nextjs:nodejs /app/certs ./certs
-ENV NODE_EXTRA_CA_CERTS=/app/certs/upstream-extra-ca.pem
+ENV NODE_EXTRA_CA_CERTS=/app/certs/upstream-extra-ca.crt
 
 # 准备默认离线下载目录
 RUN mkdir -p "$OFFLINE_DOWNLOAD_DIR" && chown -R nextjs:nodejs "$OFFLINE_DOWNLOAD_DIR"
