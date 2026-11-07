@@ -17,6 +17,26 @@ export const runtime = 'nodejs';
 
 const SEG_CACHE_MAX_BYTES = 256 * 1024 * 1024; // 单个分片缓存上限（防内存爆，HLS 分片远小于此值）
 
+/** 解析客户端 Range 头（bytes=A-B / A- / -S），total 为完整长度 */
+function parseRangeHeader(
+  header: string | null,
+  total: number
+): { start: number; end: number } | null {
+  if (!header || total <= 0) return null;
+  const m = header.trim().match(/^bytes=(\d*)-(\d*)$/);
+  if (!m || (m[1] === '' && m[2] === '')) return null;
+  if (m[1] === '') {
+    const suffix = parseInt(m[2], 10);
+    if (!Number.isFinite(suffix) || suffix <= 0) return null;
+    return { start: Math.max(0, total - suffix), end: total - 1 };
+  }
+  const start = parseInt(m[1], 10);
+  if (!Number.isFinite(start) || start < 0 || start >= total) return null;
+  let end = m[2] === '' ? total - 1 : parseInt(m[2], 10);
+  if (!Number.isFinite(end) || end < start) return null;
+  return { start, end: Math.min(end, total - 1) };
+}
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -79,22 +99,42 @@ export async function GET(request: Request) {
 
     sweepProxyCacheMaybe();
 
-    // 落盘缓存命中：VPS 直接给，不再回源（倒回去看、重播都走磁盘）
+    const clientRange = request.headers.get('range');
+
+    // 落盘缓存命中：VPS 直接给，不再回源（倒回去看、重播都走磁盘）；
+    // 带 Range 时从完整缓存里切片回 206（BYTERANGE 分片必需）
     const hit = readCachedSeg(decodedUrl);
     if (hit) {
+      const total = hit.data.length;
       const hitHeaders = buildProxyStreamHeaders(hit.contentType);
       hitHeaders.set('Cache-Control', 'no-cache');
       hitHeaders.set('X-Proxy-Cache', 'HIT');
+      if (clientRange) {
+        const r = parseRangeHeader(clientRange, total);
+        if (!r) {
+          hitHeaders.set('Content-Range', `bytes */${total}`);
+          return new Response('Range Not Satisfiable', { status: 416, headers: hitHeaders });
+        }
+        hitHeaders.set('Content-Range', `bytes ${r.start}-${r.end}/${total}`);
+        hitHeaders.set('Content-Length', String(r.end - r.start + 1));
+        return new Response(hit.data.subarray(r.start, r.end + 1) as unknown as BodyInit, {
+          status: 206,
+          headers: hitHeaders,
+        });
+      }
       return new Response(hit.data as unknown as BodyInit, {
         status: 200,
         headers: hitHeaders,
       });
     }
 
-    response = await fetchUpstreamRetry(decodedUrl, {
+    const upHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Referer': buildUpstreamReferer(source, decodedUrl),
-    });
+    };
+    // Range 透传上游（BYTERANGE 分片必需）；上游回的分片不缓存，防半包污染
+    if (clientRange) upHeaders['Range'] = clientRange;
+    response = await fetchUpstreamRetry(decodedUrl, upHeaders);
     if (!response.ok) {
       // 记上游 host＋路径（不记 token 查询串），方便定位是墙/拒连还是地址过期
       try {
@@ -111,6 +151,44 @@ export async function GET(request: Request) {
       response.headers.get('content-length')
     );
     headers.set('X-Proxy-Cache', 'MISS');
+
+    // 上游回 206 分片：直接透传（状态＋Range 头原样带回），不写缓存
+    if (response.status === 206) {
+      const upstreamRange =
+        response.headers.get('content-range') ||
+        response.headers.get('Content-Range');
+      if (upstreamRange) headers.set('Content-Range', upstreamRange);
+      headers.delete('Content-Length');
+      const upstreamLen =
+        response.headers.get('content-length') ||
+        response.headers.get('Content-Length');
+      if (upstreamLen) headers.set('Content-Length', upstreamLen);
+      return new Response(response.body, { status: 206, headers });
+    }
+
+    // 客户端要 Range 但上游给了整包：缓冲后切片回 206，整包照常落盘
+    if (clientRange) {
+      const full = Buffer.from(await response.arrayBuffer());
+      if (full.length > 0 && full.length <= SEG_CACHE_MAX_BYTES) {
+        writeCachedSeg(
+          decodedUrl,
+          full,
+          response.headers.get('Content-Type') || 'video/mp2t'
+        );
+      }
+      const r = parseRangeHeader(clientRange, full.length);
+      if (!r) {
+        headers.set('Content-Range', `bytes */${full.length}`);
+        return new Response('Range Not Satisfiable', { status: 416, headers });
+      }
+      headers.set('Content-Range', `bytes ${r.start}-${r.end}/${full.length}`);
+      headers.set('Content-Length', String(r.end - r.start + 1));
+      headers.set('X-Proxy-Cache', 'MISS');
+      return new Response(full.subarray(r.start, r.end + 1) as unknown as BodyInit, {
+        status: 206,
+        headers,
+      });
+    }
 
     // 使用流式传输，避免占用内存；同时边推边存一份到磁盘（首遍看完即缓存）
     let isCancelled = false;

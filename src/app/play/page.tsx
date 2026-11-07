@@ -38,6 +38,15 @@ import {
 import { getDoubanDetail } from '@/lib/douban.client';
 import { isEpisodeHiddenByFilter, normalizeEpisodeFilterConfig } from '@/lib/episode-filter';
 import { appendSpecialSourceParam, isSpecialSourceContext } from '@/lib/special-source.client';
+import type { SlideItem } from '@/lib/slideshow';
+import {
+  findSlideIndex,
+  isImageMagic,
+  isImageSegUrl,
+  isMediaSegUrl,
+  parseMasterForSlideshow,
+  parseVariantSlides,
+} from '@/lib/slideshow';
 import {
   buildEpisodeProgressContentKey,
   loadLocalEpisodeProgress,
@@ -1797,6 +1806,63 @@ function PlayPageClient() {
   const [corsFailedUrl, setCorsFailedUrl] = useState<string | null>(null);
   // 标记当前视频是否已经尝试过代理（防止 415→直连→失败→代理 的无限循环）
   const proxyAttemptedRef = useRef(false);
+
+  // 写真幻灯片模式（bjcam 部分影片：视频轨是 PNG/JPEG 图 + 独立音频轨，hls.js 播不了图）：
+  // 播音频轨，图片按时间轴换。纯逻辑见 lib/slideshow（可单测），这里只做抓取编排。
+  const [slideshow, setSlideshow] = useState<{
+    slides: SlideItem[];
+    total: number;
+  } | null>(null);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const slideshowRef = useRef<{ slides: SlideItem[]; total: number } | null>(null);
+  const slideIdxRef = useRef(0);
+  useEffect(() => {
+    slideshowRef.current = slideshow;
+    if (!slideshow) {
+      slideIdxRef.current = 0;
+      setSlideIdx(0);
+    }
+  }, [slideshow]);
+
+  // 探一段首字节判定是不是图片（extensionless 的 gdrive 链接用得上）
+  const sniffImageBytes = async (url: string): Promise<boolean> => {
+    try {
+      const r = await fetch(url, { headers: { Range: 'bytes=0-15' } });
+      if (!r.ok && r.status !== 206) return false;
+      return isImageMagic(new Uint8Array(await r.arrayBuffer()));
+    } catch {
+      return false;
+    }
+  };
+  // 输入代理后的 master 播放列表地址；是幻灯片则返回音频地址＋幻灯片轴，否则 null
+  const probeSlideshow = async (
+    proxyMasterUrl: string
+  ): Promise<{ audioUrl: string; slides: SlideItem[]; total: number } | null> => {
+    try {
+      // 调用处给的是相对地址（/api/...），先补成绝对，后面 new URL 才不炸
+      const absMaster = proxyMasterUrl.startsWith('http')
+        ? proxyMasterUrl
+        : new URL(proxyMasterUrl, window.location.origin).href;
+      const masterRes = await fetch(absMaster);
+      if (!masterRes.ok) return null;
+      const parsed = parseMasterForSlideshow(await masterRes.text(), absMaster);
+      if (!parsed) return null;
+      const variantRes = await fetch(parsed.variantUrl);
+      if (!variantRes.ok) return null;
+      const { slides, total } = parseVariantSlides(await variantRes.text(), parsed.variantUrl);
+      if (slides.length === 0) return null;
+      // 首分片定性：图片后缀直接判；无后缀嗅探魔数；视频直接放行（非幻灯片）
+      const first = slides[0].url;
+      let isSlideshow = isImageSegUrl(first);
+      if (!isSlideshow && !isMediaSegUrl(first)) {
+        isSlideshow = await sniffImageBytes(first);
+      }
+      if (!isSlideshow) return null;
+      return { audioUrl: parsed.audioUrl, slides, total };
+    } catch {
+      return null;
+    }
+  };
   const videoUrlRequestSeqRef = useRef(0);
   const lastVideoRequestKeyRef = useRef<string | null>(null);
 
@@ -3502,6 +3568,8 @@ function PlayPageClient() {
     const isEpisodeSwitchRequest = lastVideoRequestKeyRef.current !== requestKey;
     lastVideoRequestKeyRef.current = requestKey;
     const requestSeq = ++videoUrlRequestSeqRef.current;
+    // 切源/切集先清幻灯片态（bjcam 命中时后面重设）
+    setSlideshow(null);
     videoMediaTypeRef.current = '';
     mediaCorsFallbackRef.current = false;
 
@@ -3759,6 +3827,22 @@ function PlayPageClient() {
           const tokenParam = proxyToken ? `&token=${encodeURIComponent(proxyToken)}` : '';
           newUrl = `/api/proxy-m3u8?url=${encodeURIComponent(newUrl)}&source=directplay&proxySegments=true${tokenParam}`;
           console.log('自建源使用 VPS 缓存播放:', newUrl);
+          // bjcam 写真幻灯片：视频轨是图＋独立音频，先探，命中则播音频＋按轴换图
+          if (currentSource === 'bjcam') {
+            const ss = await probeSlideshow(newUrl).catch(() => null);
+            if (requestSeq !== videoUrlRequestSeqRef.current) {
+              return;
+            }
+            if (ss) {
+              setSlideshow({ slides: ss.slides, total: ss.total });
+              newUrl = ss.audioUrl;
+              console.log(`写真幻灯片模式：${ss.slides.length} 张图 + 独立音频`);
+            } else {
+              setSlideshow(null);
+            }
+          } else {
+            setSlideshow(null);
+          }
         } else if (currentSource === 'directplay' && newUrl && isM3u8) {
           // 直链播放模式：检查 localStorage 是否记录了该域名需要代理
           if (isDirectplayDomainProxied(newUrl)) {
@@ -7472,6 +7556,31 @@ function PlayPageClient() {
           }
         });
 
+        // 幻灯片跟轴：音频播到哪张图显哪张（4Hz 足够，预载下一张）
+        artPlayerRef.current.on('video:timeupdate', () => {
+          try {
+            const ss = slideshowRef.current;
+            const ap = artPlayerRef.current;
+            if (!ss || !ap) return;
+            const idx = findSlideIndex(ss.slides, ap.currentTime || 0);
+            if (idx !== slideIdxRef.current) {
+              slideIdxRef.current = idx;
+              setSlideIdx(idx);
+              const nx = ss.slides[idx + 1];
+              if (nx) {
+                try {
+                  const im = new Image();
+                  im.src = nx.url;
+                } catch {
+                  /* ignore */
+                }
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        });
+
         // 监听网页全屏事件，控制导航栏显示隐藏
         artPlayerRef.current.on('fullscreenWeb', (isFullscreen: boolean) => {
           console.log('网页全屏状态变化:', isFullscreen);
@@ -8626,6 +8735,19 @@ function PlayPageClient() {
                       )}
                     </div>
                   </>
+                )}
+
+                {/* 写真幻灯片：音频轨正常播，图片按轴换（hls.js 播不了图片段） */}
+                {slideshow && slideshow.slides[slideIdx] && (
+                  <div className='absolute inset-0 z-[5] bg-black flex items-center justify-center pointer-events-none rounded-xl overflow-hidden'>
+                    <img
+                      key={slideshow.slides[slideIdx].url}
+                      src={slideshow.slides[slideIdx].url}
+                      alt=''
+                      draggable={false}
+                      className='max-w-full max-h-full object-contain select-none'
+                    />
+                  </div>
                 )}
 
                 {/* 换源加载蒙层 */}
