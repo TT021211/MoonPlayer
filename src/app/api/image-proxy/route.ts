@@ -5,6 +5,7 @@ import nodeFetch from 'node-fetch';
 import { NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
+import { fetchUpstreamRetry } from '@/lib/server/fetch-retry';
 import {
   readCachedSeg,
   sweepProxyCacheMaybe,
@@ -87,7 +88,7 @@ async function fetchImage(
     : imageUrl;
 
   if (!isBangumiImage || isCloudflareEnvironment()) {
-    return fetch(targetUrl, { headers, signal: AbortSignal.timeout(15000) });
+    return fetchUpstreamRetry(targetUrl, headers as Record<string, string>);
   }
 
   const proxy = config?.SiteConfig.BangumiProxy?.trim();

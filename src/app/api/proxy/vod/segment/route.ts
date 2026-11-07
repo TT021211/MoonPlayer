@@ -9,6 +9,7 @@ import {
   sweepProxyCacheMaybe,
   writeCachedSeg,
 } from '@/lib/server/proxy-cache';
+import { fetchUpstreamRetry } from '@/lib/server/fetch-retry';
 import { validateProxyUrlServerSide } from '@/lib/server/ssrf';
 import { buildProxyStreamHeaders, buildUpstreamReferer } from '@/lib/server/proxy-headers';
 
@@ -90,11 +91,9 @@ export async function GET(request: Request) {
       });
     }
 
-    response = await fetch(decodedUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': buildUpstreamReferer(source, decodedUrl),
-      },
+    response = await fetchUpstreamRetry(decodedUrl, {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': buildUpstreamReferer(source, decodedUrl),
     });
     if (!response.ok) {
       // 记上游 host＋状态（不记 token 查询串），方便定位是墙/拒连还是地址过期
