@@ -18,6 +18,9 @@ const LIST_TTL_MS =
   Number(process.env.PROXY_CACHE_LIST_TTL_H || 1) * 3600 * 1000;
 const MAX_BYTES =
   Number(process.env.PROXY_CACHE_MAX_GB || 10) * 1024 * 1024 * 1024;
+// 磁盘剩余空间低于此值时强制删旧缓存（小盘机救命线，默认 2GB）
+const MIN_FREE_BYTES =
+  Number(process.env.PROXY_CACHE_MIN_FREE_GB || 2) * 1024 * 1024 * 1024;
 
 function ensureDir(): void {
   try {
@@ -249,14 +252,29 @@ function sweepProxyCache(): void {
   }
   // 2) 总量 LRU（按 mtime 从旧到新删）
   let total = files.reduce((s, f) => s + f.size, 0);
-  if (total <= MAX_BYTES) return;
+  // 3) 磁盘剩余空间不足时继续删（小盘机：缓存再少也不能把盘写满）
+  const diskFree = (() => {
+    try {
+      const st = fs.statfsSync(DIR) as unknown as {
+        bfree: number;
+        bsize: number;
+      };
+      return Number(st.bfree) * Number(st.bsize) || 0;
+    } catch {
+      return 0;
+    }
+  })();
+  const needFree = diskFree > 0 && diskFree < MIN_FREE_BYTES;
+  if (total <= MAX_BYTES && !needFree) return;
   files.sort((a, b) => a.mtime - b.mtime);
+  let free = diskFree;
   for (const f of files) {
-    if (total <= MAX_BYTES) break;
+    if (total <= MAX_BYTES && !(needFree && free < MIN_FREE_BYTES)) break;
     if (f.size === 0) continue;
     try {
       fs.rmSync(f.p, { force: true });
       total -= f.size;
+      free += f.size;
     } catch {
       /* ignore */
     }
