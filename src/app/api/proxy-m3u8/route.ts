@@ -360,6 +360,17 @@ function resolveM3u8Links(
   const base = new URL(baseUrl);
   const baseDir = base.href.substring(0, base.href.lastIndexOf('/') + 1);
 
+  // 相对转绝对（单个坏行不许掀翻整个播放列表：转失败就保留原行）
+  const toAbs = (u: string): string => {
+    try {
+      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      if (u.startsWith('/')) return `${base.protocol}//${base.host}${u}`;
+      return new URL(u, baseDir).href;
+    } catch {
+      return u;
+    }
+  };
+
   let isNextLineUrl = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -370,16 +381,7 @@ function resolveM3u8Links(
       // 提取 URI 部分
       const uriMatch = line.match(/URI="([^"]+)"/);
       if (uriMatch && uriMatch[1]) {
-        let keyUri = uriMatch[1];
-
-        // 转换为绝对路径
-        if (!keyUri.startsWith('http://') && !keyUri.startsWith('https://')) {
-          if (keyUri.startsWith('/')) {
-            keyUri = `${base.protocol}//${base.host}${keyUri}`;
-          } else {
-            keyUri = new URL(keyUri, baseDir).href;
-          }
-        }
+        let keyUri = toAbs(uriMatch[1]);
 
         // 直链/全量代理模式：通过代理访问密钥，避免 CORS 问题
         if (source === 'directplay' || proxySegments) {
@@ -398,14 +400,7 @@ function resolveM3u8Links(
     if (line.startsWith('#EXT-X-MEDIA:')) {
       const uriMatch = line.match(/URI="([^"]+)"/);
       if (uriMatch && uriMatch[1]) {
-        let mediaUri = uriMatch[1];
-        if (!mediaUri.startsWith('http://') && !mediaUri.startsWith('https://')) {
-          if (mediaUri.startsWith('/')) {
-            mediaUri = `${base.protocol}//${base.host}${mediaUri}`;
-          } else {
-            mediaUri = new URL(mediaUri, baseDir).href;
-          }
-        }
+        let mediaUri = toAbs(uriMatch[1]);
         const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
         const adBlockParam = adBlockEnabled ? '' : '&adblock=false';
         const proxySegmentsParam = proxySegments ? '&proxySegments=true' : '';
@@ -435,16 +430,8 @@ function resolveM3u8Links(
     // 处理 URL 行
     let url = line.trim();
 
-    // 1. 先转换为绝对 URL
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      if (url.startsWith('/')) {
-        // 以 / 开头，相对于域名根目录
-        url = `${base.protocol}//${base.host}${url}`;
-      } else {
-        // 相对于当前目录
-        url = new URL(url, baseDir).href;
-      }
-    }
+    // 1. 先转换为绝对 URL（坏行保留原样，不抛错）
+    url = toAbs(url);
 
     // 2. 检查是否是子 m3u8，如果是，转换为代理链接
     const isM3u8 = url.includes('.m3u8') || isNextLineUrl;

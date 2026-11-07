@@ -515,7 +515,11 @@ function HohojPageClient() {
                       className='flex flex-col items-center gap-2 group cursor-pointer'
                     >
                       <img
-                        src={m.pic || '/logo.png'}
+                        src={
+                          m.pic && /^https?:\/\//i.test(m.pic) && !m.pic.startsWith('/api/')
+                            ? `/api/image-proxy?url=${encodeURIComponent(m.pic)}`
+                            : m.pic || '/logo.png'
+                        }
                         alt={m.name}
                         loading='lazy'
                         onError={(e) => {
