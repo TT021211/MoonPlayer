@@ -68,6 +68,25 @@
   超 12 小时未更新自动拉取→合并→落库；自定义源不受订阅覆盖（同名 key 只覆盖名称/地址）。
 - ⚙️ **设置弹窗加宽**：用户菜单设置弹窗 `max-w-xl` → `max-w-3xl`，高度提到 `92vh`。
 
+### 后续变更（2026-11-08，墙区播放＋移动端）
+
+- 📺 **KinoStream/BJ剧场**：`/kinostream`（6 分类，网关全量本地分页）与 `/bjcam`（3 分类，
+  网关直连优先/挑战转中转）上线，双端导航＋后台频道开关；bjcam 源地址前端自动派生，免手动加源；
+  详情解析兼容带 `?token=` 的 m3u8（无选集修复）；bjcam 旧 embed（`playrecord.biz`）网关侧解 packer 提流。
+- 💾 **VPS 落盘缓存播放**：自建源 m3u8 全走 `/api/proxy-m3u8`（播放列表＋分片＋密钥，
+  `EXT-X-MEDIA` 音轨一并改写），边看边存；看完/切集 keepalive 精确清除；TTL（列表 1h/分片 72h）＋
+  总量 10G＋磁盘剩余 2G 三线清扫。相关变量：`PROXY_CACHE_DIR`（默认 `/app/.data/proxy-cache`）、
+  `PROXY_CACHE_LIST_TTL_H`、`PROXY_CACHE_SEG_TTL_H`、`PROXY_CACHE_MAX_GB`、`PROXY_CACHE_MIN_FREE_GB`。
+- 🖼️ **封面/头像走图片代理**：自建源卡片＋人物墙头像经 `/api/image-proxy` 落盘
+  （防盗链图床发自站 Referer）；ggjav 图床断链已补进 `certs/upstream-extra-ca.pem`
+  （`NODE_EXTRA_CA_CERTS` 烘进镜像）。
+- 🖼️ **写真幻灯片**：bjcam 部分影片视频轨是 PNG/JPEG 图＋独立音频，改播音频＋按轴换图；
+  分片代理支持 Range（206 透传/切片/416，半包不入库）。
+- 📲 **移动端**：记录弹窗 portal 化（X 可点）、快进提示自管理（1.2s 消失）、触摸防双响＋`touch-action`
+  （iOS 双击暂停）、顶栏弹性布局、hohoj 封面 3:2 横框、评分/集数徽标防叠、移动端隐藏页面滚动条。
+- 🔐 **登录用户名去空格**；片源拒连报人话 502；上游抓取失败自动重试；失败日志带 host＋路径；
+  Dockerfile 锁 pnpm 10.14.0、加 `.dockerignore`（防本地 `.next` 旧缓存污染构建）。
+
 ### 已删除（路由 + API + 组件整组移除）
 
 观影室（含 WatchRoomProvider/hooks/socket/DO）、WebTV（`/tv`）、电视/网络直播、追番订阅（含豆瓣每日放送）、
