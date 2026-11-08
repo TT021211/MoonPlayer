@@ -15,6 +15,8 @@ RUN pnpm install --frozen-lockfile
 # ---- 第 2 阶段：构建项目 ----
 FROM node:24-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+# better-sqlite3 在 node24/musl 下无预编译包时回退 node-gyp 源码编译，需要编译工具链
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 # 复制依赖

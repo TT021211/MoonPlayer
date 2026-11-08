@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Blend, Cat, Clapperboard, Clover, Film, Flame, Globe, Heart, Home, Menu, MonitorPlay, Search, SquarePlay, Star, Tv, Users } from 'lucide-react';
+import { Blend, Cat, Clapperboard, Clover, Film, Flame, Globe, Heart, Home, Menu, MonitorPlay, Popcorn, Search, SquarePlay, Star, Tv, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -178,6 +178,12 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       href: '/bjcam',
     },
     {
+      icon: Popcorn,
+      label: '奈飞工厂',
+      key: 'netflixgc',
+      href: '/netflixgc',
+    },
+    {
       icon: Clover,
       label: '综艺',
       key: 'show',
@@ -237,6 +243,12 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
         label: 'BJ剧场',
         key: 'bjcam',
         href: '/bjcam',
+      },
+      {
+        icon: Popcorn,
+        label: '奈飞工厂',
+      key: 'netflixgc',
+        href: '/netflixgc',
       },
       {
         icon: Clover,

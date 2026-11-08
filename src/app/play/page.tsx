@@ -3818,7 +3818,7 @@ function PlayPageClient() {
           console.log('使用代理模式播放:', newUrl);
         } else if (
           newUrl && isM3u8 &&
-          ['hanime1', 'aqdlt', 'hohoj', 'kinostream', 'bjcam'].includes(currentSource)
+          ['hanime1', 'aqdlt', 'hohoj', 'kinostream', 'bjcam', 'netflixgc'].includes(currentSource)
         ) {
           // 自建源走 VPS 落盘缓存播放（边看边存）：墙区直连境外 CDN 会 hung 住，
           // 经服务器拿一次落盘后，倒回/重播都走磁盘；播放器销毁时精确清除。
