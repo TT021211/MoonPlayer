@@ -11,6 +11,7 @@ import {
 } from '@/lib/server/proxy-cache';
 import { fetchUpstreamRetry } from '@/lib/server/fetch-retry';
 import { validateProxyUrlServerSide } from '@/lib/server/ssrf';
+import { withUpstreamCookies } from '@/lib/server/upstream-cookies';
 import { buildProxyStreamHeaders, buildUpstreamReferer } from '@/lib/server/proxy-headers';
 
 export const runtime = 'nodejs';
@@ -128,10 +129,10 @@ export async function GET(request: Request) {
       });
     }
 
-    const upHeaders: Record<string, string> = {
+    const upHeaders: Record<string, string> = await withUpstreamCookies(source, decodedUrl, {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Referer': buildUpstreamReferer(source, decodedUrl),
-    };
+    });
     // Range 透传上游（BYTERANGE 分片必需）；上游回的分片不缓存，防半包污染
     if (clientRange) upHeaders['Range'] = clientRange;
     response = await fetchUpstreamRetry(decodedUrl, upHeaders);

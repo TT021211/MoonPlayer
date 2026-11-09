@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
 import { fetchUpstreamRetry } from '@/lib/server/fetch-retry';
+import { withUpstreamCookies } from '@/lib/server/upstream-cookies';
 import {
   readCachedSeg,
   sweepProxyCacheMaybe,
@@ -75,12 +76,12 @@ async function fetchImage(
   } catch {
     /* ignore */
   }
-  const headers = {
+  const headers = await withUpstreamCookies(options?.source || null, imageUrl, {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
     Referer: referer,
-  };
+  });
 
   const config = isBangumiImage ? await getConfig() : null;
   const targetUrl = isBangumiImage

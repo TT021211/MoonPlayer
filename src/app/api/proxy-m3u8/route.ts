@@ -10,6 +10,7 @@ import {
 } from '@/lib/server/proxy-cache';
 import { fetchUpstreamRetry } from '@/lib/server/fetch-retry';
 import { validateProxyUrlServerSide } from '@/lib/server/ssrf';
+import { withUpstreamCookies } from '@/lib/server/upstream-cookies';
 
 export const runtime = 'nodejs';
 
@@ -146,13 +147,16 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    const response = await fetchUpstreamRetry(m3u8Url, {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': '*/*',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Referer': `${m3u8UrlObj.protocol}//${m3u8UrlObj.host}/`,
-    });
+    const response = await fetchUpstreamRetry(
+      m3u8Url,
+      await withUpstreamCookies(source, m3u8Url, {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': `${m3u8UrlObj.protocol}//${m3u8UrlObj.host}/`,
+      })
+    );
 
     if (!response.ok) {
       try {
