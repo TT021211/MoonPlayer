@@ -16,6 +16,8 @@ export const NAV_CHANNELS: ChannelDef[] = [
   { key: 'kinostream', label: 'KinoStream' },
   { key: 'bjcam', label: 'BJ剧场' },
   { key: 'netflixgc', label: '奈飞工厂' },
+  { key: 'pornhub', label: 'Pornhub' },
+  { key: 'xhamster', label: 'xHamster' },
   { key: 'custom', label: '自定义' },
   { key: 'browse', label: '源浏览' },
 ];

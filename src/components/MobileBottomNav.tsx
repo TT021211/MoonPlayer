@@ -82,6 +82,18 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       href: '/netflixgc',
     },
     {
+      icon: Globe,
+      label: 'Pornhub',
+      key: 'pornhub',
+      href: '/pornhub',
+    },
+    {
+      icon: Users,
+      label: 'xHamster',
+      key: 'xhamster',
+      href: '/xhamster',
+    },
+    {
       icon: Clover,
       label: '综艺',
       key: 'show',
@@ -148,6 +160,18 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         label: '奈飞工厂',
       key: 'netflixgc',
         href: '/netflixgc',
+      },
+      {
+        icon: Globe,
+        label: 'Pornhub',
+      key: 'pornhub',
+        href: '/pornhub',
+      },
+      {
+        icon: Users,
+        label: 'xHamster',
+      key: 'xhamster',
+        href: '/xhamster',
       },
       {
         icon: Clover,
