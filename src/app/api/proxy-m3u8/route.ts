@@ -376,11 +376,19 @@ function resolveM3u8Links(
   const baseDir = base.href.substring(0, base.href.lastIndexOf('/') + 1);
 
   // 相对转绝对（单个坏行不许掀翻整个播放列表：转失败就保留原行）
+  // 注意：签名串经常在查询串里（如 pornhub ?h=&e=），相对地址按 RFC 解析会丢掉父查询串
+  // （子项自带查询串的不动；父级本身没查询串的也不加）
   const toAbs = (u: string): string => {
     try {
       if (u.startsWith('http://') || u.startsWith('https://')) return u;
-      if (u.startsWith('/')) return `${base.protocol}//${base.host}${u}`;
-      return new URL(u, baseDir).href;
+      if (u.startsWith('/')) {
+        const abs = `${base.protocol}//${base.host}${u}`;
+        if (!abs.includes('?') && base.search) return abs + base.search;
+        return abs;
+      }
+      const abs = new URL(u, baseDir).href;
+      if (!abs.includes('?') && base.search) return abs + base.search;
+      return abs;
     } catch {
       return u;
     }
