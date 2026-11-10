@@ -18,10 +18,9 @@ interface CookieRule {
 }
 
 const RULES: Record<string, CookieRule> = {
-  pornhub: {
-    bootstrap: 'https://cn.pornhub.com/',
-    hosts: ['pornhub.com', 'phncdn.com'],
-  },
+  // 注意：pornhub 曾在此处配过规则，后证实是错的——它的边缘验的是“签名新鲜度”，
+  // 无 Cookie + 2h 内新签名直接 200；反而把别处抓来的 Cookie（不同会话）带上必 410。
+  // 教训：加规则前必须用“新鲜签名 × 有/无 Cookie”对照验，别拿过期签名测。
 };
 
 function parseSetCookies(res: Response): string {
