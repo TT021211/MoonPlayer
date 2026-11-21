@@ -1,0 +1,83 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, ios-app]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ios-unsigned.yml'
+
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+          xcodegen generate
+
+      - name: Build unsigned archive
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project MoonPlayer.xcodeproj \
+            -scheme MoonPlayer \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/MoonPlayer.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            archive
+
+      - name: Package unsigned IPA
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+          APP_PATH="$PWD/build/MoonPlayer.xcarchive/Products/Applications/MoonPlayer.app"
+          test -d "$APP_PATH"
+          rm -rf build/Payload build/MoonPlayer-unsigned.ipa
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          cd build
+          zip -qry MoonPlayer-unsigned.ipa Payload
+          ls -lh MoonPlayer-unsigned.ipa
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoonPlayer-unsigned-ipa
+          path: apps/ios/build/MoonPlayer-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view ios-latest >/dev/null 2>&1 || \
+            gh release create ios-latest \
+              --title "MoonPlayer iOS (unsigned)" \
+              --notes "未签名 IPA，仅供 TrollStore / AltStore / Sideloadly 等工具自签安装。最新构建来自 GitHub Actions。"
+          gh release upload ios-latest apps/ios/build/MoonPlayer-unsigned.ipa --clobber
