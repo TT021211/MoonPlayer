@@ -173,7 +173,8 @@ struct SearchView: View {
                             poster: item.poster,
                             badge: item.vod_remarks,
                             year: item.year,
-                            sourceName: item.source_name
+                            sourceName: item.source_name,
+                            aspect: AppState.posterAspect(forSourceKey: item.source ?? "")
                         )
                     }
                     .buttonStyle(.plain)

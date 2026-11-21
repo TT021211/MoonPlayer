@@ -34,6 +34,10 @@ final class AppState: ObservableObject {
         serverURL = defaults.string(forKey: Keys.server) ?? Self.defaultServer
         username = defaults.string(forKey: Keys.username) ?? ""
         siteName = defaults.string(forKey: Keys.siteName) ?? "MoonPlayer"
+
+        APIClient.shared.onTokenRefreshed = { newToken in
+            Keychain.save(newToken, for: Keys.token)
+        }
     }
 
     // MARK: - 启动 / 登录
@@ -187,6 +191,65 @@ final class AppState: ObservableObject {
             query: [URLQueryItem(name: "q", value: keyword)]
         )
         return response.results
+    }
+
+    // MARK: - 首页 / 豆瓣
+
+    @MainActor
+    func fetchTrending() async throws -> [TrendingItem] {
+        let response: TrendingResponse = try await APIClient.shared.request("/api/tmdb/trending")
+        return response.list ?? []
+    }
+
+    @MainActor
+    func fetchUpcoming() async throws -> [TrendingItem] {
+        let response: UpcomingResponse = try await APIClient.shared.request("/api/tmdb/upcoming")
+        return response.data ?? []
+    }
+
+    @MainActor
+    func fetchDoubanCategories(
+        kind: String,
+        category: String,
+        type: String,
+        start: Int,
+        limit: Int = 24
+    ) async throws -> [DoubanItem] {
+        let response: DoubanResponse = try await APIClient.shared.request(
+            "/api/douban/categories",
+            query: [
+                URLQueryItem(name: "kind", value: kind),
+                URLQueryItem(name: "category", value: category),
+                URLQueryItem(name: "type", value: type),
+                URLQueryItem(name: "limit", value: String(limit)),
+                URLQueryItem(name: "start", value: String(start))
+            ]
+        )
+        return response.list ?? []
+    }
+
+    @MainActor
+    func fetchDoubanRecommends(
+        kind: String,
+        category: String,
+        format: String,
+        start: Int,
+        limit: Int = 24
+    ) async throws -> [DoubanItem] {
+        var query = [
+            URLQueryItem(name: "kind", value: kind),
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "start", value: String(start))
+        ]
+        if !format.isEmpty {
+            query.append(URLQueryItem(name: "format", value: format))
+        }
+        let response: DoubanResponse = try await APIClient.shared.request(
+            "/api/douban/recommends",
+            query: query
+        )
+        return response.list ?? []
     }
 
     @MainActor
@@ -363,6 +426,31 @@ final class AppState: ObservableObject {
         sources.first { $0.key == key }
     }
 
+    /// 按频道定义查找采集源（兼容 key 大小写/前后缀，如 hanime → hanime1）。
+    func sourceForChannel(_ channelKey: String) -> SourceItem? {
+        if let exact = sources.first(where: { $0.key.caseInsensitiveCompare(channelKey) == .orderedSame }) {
+            return exact
+        }
+        let needle = channelKey.lowercased()
+        return sources.first { source in
+            let key = source.key.lowercased()
+            let api = source.api.lowercased()
+            return key.contains(needle)
+                || needle.contains(key)
+                || api.contains("/\(needle)/")
+        }
+    }
+
+    /// TMDB 图片完整地址（默认 w500）。
+    static func tmdbImageURL(_ path: String?, size: String = "w500") -> String? {
+        guard var path = path?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
+            return nil
+        }
+        if path.hasPrefix("http://") || path.hasPrefix("https://") { return path }
+        if path.hasPrefix("//") { path = "https:" + path }
+        return "https://image.tmdb.org/t/p/\(size)\(path.hasPrefix("/") ? "" : "/")\(path)"
+    }
+
     func imageURL(_ raw: String?) -> URL? {
         guard var value = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
             return nil
@@ -397,9 +485,10 @@ final class AppState: ObservableObject {
         }
         guard let direct = URL(string: raw) else { return nil }
 
-        if proxyMode {
-            return proxyURL(path: "/api/proxy/vod/m3u8", target: raw, sourceKey: sourceKey) ?? direct
-        }
+        // AVPlayer 不受浏览器 CORS 限制，原生端优先直连：
+        // 既省掉服务端转封装，也避开 /api/proxy/vod/* 需要的登录态。
+        // 直连失败时播放器会自动降级到免鉴权的 /api/proxy-m3u8。
+        _ = proxyMode
         if forceProxy {
             return proxyURL(
                 path: "/api/proxy-m3u8",
@@ -447,8 +536,20 @@ final class AppState: ObservableObject {
         return url
     }
 
-    static func channelSymbol(for key: String) -> String {
-        let k = key.lowercased()
+    /// 封面比例（宽 / 高）：横图源用横版，避免 2:3 卡片把图裁掉。
+    static func posterAspect(forSourceKey key: String) -> CGFloat {
+        let value = key.lowercased()
+        if value.contains("aqdlt") || value.contains("bjcam")
+            || value.contains("pornhub") || value.contains("xhamster") {
+            return 16.0 / 9.0
+        }
+        if value.contains("hohoj") {
+            return 3.0 / 2.0
+        }
+        return 2.0 / 3.0
+    }
+
+    static func channelSymbol(for key: String) -> String {        let k = key.lowercased()
         if k.contains("hanime") { return "moon.stars.fill" }
         if k.contains("aqdlt") { return "heart.fill" }
         if k.contains("hohoj") { return "person.2.fill" }

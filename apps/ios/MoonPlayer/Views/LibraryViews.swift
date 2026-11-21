@@ -32,7 +32,8 @@ struct FavoritesView: View {
                                 poster: favorite.cover,
                                 badge: favorite.remarks,
                                 year: favorite.year,
-                                sourceName: favorite.sourceName
+                                sourceName: favorite.sourceName,
+                                aspect: AppState.posterAspect(forSourceKey: favorite.source)
                             )
                         }
                         .buttonStyle(.plain)
@@ -81,8 +82,10 @@ struct HistoryView: View {
                         )
                     } label: {
                         HStack(spacing: 12) {
+                            let aspect = AppState.posterAspect(forSourceKey: record.source)
+                            let imageWidth: CGFloat = aspect > 1.1 ? 96 : 62
                             RemoteImage(url: app.imageURL(record.cover))
-                                .frame(width: 62, height: 88)
+                                .frame(width: imageWidth, height: imageWidth / aspect)
                                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
                             VStack(alignment: .leading, spacing: 5) {

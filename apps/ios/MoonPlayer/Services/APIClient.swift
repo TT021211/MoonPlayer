@@ -33,6 +33,7 @@ final class APIClient {
 
     private(set) var baseURL: URL?
     private(set) var token: String?
+    var onTokenRefreshed: ((String) -> Void)?
 
     private let session: URLSession
     private let decoder = JSONDecoder()
@@ -105,6 +106,32 @@ final class APIClient {
         _ = try await send(path, query: query, method: method, body: body, authenticated: true)
     }
 
+    /// Access Token 只有 4 小时；401 时用 refreshToken 换新，调用方无需感知。
+    @discardableResult
+    func refreshAccessToken() async -> Bool {
+        guard token != nil else { return false }
+        do {
+            let data = try await send(
+                "/api/auth/refresh",
+                query: [],
+                method: "POST",
+                body: nil,
+                authenticated: true,
+                canRetry: false
+            )
+            guard let response = try? decoder.decode(RefreshResponse.self, from: data),
+                  let newToken = response.token,
+                  !newToken.isEmpty else {
+                return false
+            }
+            token = newToken
+            onTokenRefreshed?(newToken)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - 底层
 
     private func send(
@@ -112,7 +139,8 @@ final class APIClient {
         query: [URLQueryItem],
         method: String,
         body: Any?,
-        authenticated: Bool
+        authenticated: Bool,
+        canRetry: Bool = true
     ) async throws -> Data {
         let url = try makeURL(path: path, query: query)
         var request = URLRequest(url: url)
@@ -140,6 +168,16 @@ final class APIClient {
         }
 
         if http.statusCode == 401 {
+            if authenticated, canRetry, await refreshAccessToken() {
+                return try await send(
+                    path,
+                    query: query,
+                    method: method,
+                    body: body,
+                    authenticated: true,
+                    canRetry: false
+                )
+            }
             throw APIError.unauthorized
         }
 

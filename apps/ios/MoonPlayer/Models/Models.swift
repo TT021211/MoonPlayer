@@ -101,6 +101,61 @@ struct VideoPage: Codable {
     var pageCount: Int?
 }
 
+// MARK: - 豆瓣 / TMDB 首页数据
+
+struct DoubanItem: Codable, Identifiable {
+    let id: String
+    var title: String
+    var poster: String?
+    var rate: String?
+    var year: String?
+}
+
+struct DoubanResponse: Codable {
+    var code: Int?
+    var list: [DoubanItem]?
+}
+
+struct TrendingItem: Codable, Identifiable {
+    var title: String?
+    var name: String?
+    var backdrop_path: String?
+    var poster_path: String?
+    var overview: String?
+    var release_date: String?
+    var vote_average: Double?
+    var media_type: String?
+
+    var displayTitle: String { title ?? name ?? "未命名" }
+    var displayYear: String { String((release_date ?? "").prefix(4)) }
+    var id: String { "\(displayTitle)-\(release_date ?? "")" }
+}
+
+struct TrendingResponse: Codable {
+    var code: Int?
+    var list: [TrendingItem]?
+}
+
+struct UpcomingResponse: Codable {
+    var code: Int?
+    var data: [TrendingItem]?
+}
+
+struct RefreshResponse: Codable {
+    var ok: Bool?
+    var token: String?
+    var error: String?
+}
+
+struct BrowseItem: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let poster: String?
+    let year: String?
+    let rate: String?
+    let subtitle: String?
+}
+
 // MARK: - 收藏 / 播放记录
 
 struct FavoriteEnvelope: Codable {

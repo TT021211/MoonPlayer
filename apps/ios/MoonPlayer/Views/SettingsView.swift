@@ -35,7 +35,7 @@ struct SettingsView: View {
 
             Section("缓存") {
                 Button {
-                    URLCache.shared.removeAllCachedResponses()
+                    ImageCache.shared.clear()
                     app.showToast("图片缓存已清除")
                 } label: {
                     Text("清除图片缓存")

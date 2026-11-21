@@ -92,10 +92,13 @@ struct PlayerScreen: View {
             OrientationManager.shared.lock(.landscape)
             isLandscape = true
             UIApplication.shared.isIdleTimerDisabled = true
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            try? AVAudioSession.sharedInstance().setActive(true)
             model.configure(app: app)
         }
         .onDisappear {
             model.stop()
+            try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
             UIApplication.shared.isIdleTimerDisabled = false
             OrientationManager.shared.lock(.portrait)
             Task {

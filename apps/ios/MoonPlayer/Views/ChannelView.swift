@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ChannelView: View {
     let source: SourceItem
+    var channelTitle: String = ""
+    var posterAspect: CGFloat = 2.0 / 3.0
 
     @EnvironmentObject private var app: AppState
 
@@ -17,10 +19,18 @@ struct ChannelView: View {
     @State private var showCategorySheet = false
     @State private var showSearchSheet = false
     @State private var didLoad = false
+    @State private var videoLoadToken = UUID()
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 102), spacing: 12)
-    ]
+    private var displayTitle: String {
+        channelTitle.isEmpty ? source.name : channelTitle
+    }
+
+    private var columns: [GridItem] {
+        if posterAspect > 1.1 {
+            return [GridItem(.adaptive(minimum: 150), spacing: 12)]
+        }
+        return [GridItem(.adaptive(minimum: 102), spacing: 12)]
+    }
 
     var body: some View {
         ScrollView {
@@ -48,7 +58,7 @@ struct ChannelView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.background.ignoresSafeArea())
-        .navigationTitle(source.name)
+        .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -75,7 +85,7 @@ struct ChannelView: View {
             }
         }
         .sheet(isPresented: $showSearchSheet) {
-            SourceSearchView(source: source)
+            SourceSearchView(source: source, posterAspect: posterAspect)
                 .environmentObject(app)
         }
     }
@@ -147,7 +157,8 @@ struct ChannelView: View {
                         title: item.title,
                         poster: item.poster,
                         badge: item.vod_remarks,
-                        year: item.year
+                        year: item.year,
+                        aspect: posterAspect
                     )
                 }
                 .buttonStyle(.plain)
@@ -223,6 +234,8 @@ struct ChannelView: View {
         }
         guard hasMore || reset else { return }
 
+        let token = UUID()
+        videoLoadToken = token
         isLoadingVideos = true
         errorMessage = nil
         do {
@@ -231,6 +244,7 @@ struct ChannelView: View {
                 categoryID: category.id,
                 page: page
             )
+            guard videoLoadToken == token else { return }
             let incoming = response.results ?? []
             if reset {
                 videos = incoming
@@ -241,6 +255,7 @@ struct ChannelView: View {
             pageCount = response.pageCount ?? page
             hasMore = page < pageCount && !incoming.isEmpty
         } catch {
+            guard videoLoadToken == token else { return }
             if reset { errorMessage = error.localizedDescription }
         }
         isLoadingVideos = false
@@ -340,6 +355,7 @@ struct CategoryPickerSheet: View {
 
 struct SourceSearchView: View {
     let source: SourceItem
+    var posterAspect: CGFloat = 2.0 / 3.0
 
     @EnvironmentObject private var app: AppState
     @Environment(\.dismiss) private var dismiss
@@ -351,9 +367,12 @@ struct SourceSearchView: View {
     @State private var errorMessage: String?
     @State private var task: Task<Void, Never>?
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 102), spacing: 12)
-    ]
+    private var columns: [GridItem] {
+        if posterAspect > 1.1 {
+            return [GridItem(.adaptive(minimum: 150), spacing: 12)]
+        }
+        return [GridItem(.adaptive(minimum: 102), spacing: 12)]
+    }
 
     var body: some View {
         NavigationStack {
@@ -390,7 +409,8 @@ struct SourceSearchView: View {
                                     title: item.title,
                                     poster: item.poster,
                                     badge: item.vod_remarks,
-                                    year: item.year
+                                    year: item.year,
+                                    aspect: posterAspect
                                 )
                             }
                             .buttonStyle(.plain)

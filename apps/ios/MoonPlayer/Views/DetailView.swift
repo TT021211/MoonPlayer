@@ -120,7 +120,11 @@ struct DetailView: View {
     }
 
     private func header(_ detail: VideoDetail) -> some View {
-        ZStack(alignment: .bottom) {
+        let aspect = AppState.posterAspect(forSourceKey: detail.source ?? sourceKey)
+        let posterWidth: CGFloat = aspect > 1.1 ? 150 : 108
+        let posterHeight = posterWidth / aspect
+
+        return ZStack(alignment: .bottom) {
             RemoteImage(url: app.imageURL(detail.poster ?? previewPoster))
                 .frame(height: 210)
                 .frame(maxWidth: .infinity)
@@ -137,7 +141,7 @@ struct DetailView: View {
 
             HStack(alignment: .bottom, spacing: 14) {
                 RemoteImage(url: app.imageURL(detail.poster ?? previewPoster))
-                    .frame(width: 108, height: 162)
+                    .frame(width: posterWidth, height: posterHeight)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)

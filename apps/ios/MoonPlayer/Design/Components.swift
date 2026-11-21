@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - 远程图片
 
@@ -6,30 +7,28 @@ struct RemoteImage: View {
     let url: URL?
     var contentMode: ContentMode = .fill
 
+    @StateObject private var loader = RemoteImageLoader()
+
     var body: some View {
-        AsyncImage(
-            url: url,
-            transaction: Transaction(animation: .easeInOut(duration: 0.18))
-        ) { phase in
-            switch phase {
-            case .success(let image):
-                image
+        ZStack {
+            if let image = loader.image {
+                Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
-            case .failure:
+            } else {
                 placeholder(symbol: "photo")
-            case .empty:
-                placeholder(symbol: "photo")
-                    .overlay(
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(.white.opacity(0.45))
-                            .scaleEffect(0.8)
-                    )
-            @unknown default:
-                placeholder(symbol: "photo")
+                    .overlay {
+                        if loader.isLoading {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.white.opacity(0.45))
+                                .scaleEffect(0.8)
+                        }
+                    }
             }
         }
+        .onAppear { loader.load(url) }
+        .onChange(of: url) { value in loader.load(value) }
     }
 
     private func placeholder(symbol: String) -> some View {
@@ -46,6 +45,41 @@ struct RemoteImage: View {
     }
 }
 
+final class RemoteImageLoader: ObservableObject {
+    @Published private(set) var image: UIImage?
+    @Published private(set) var isLoading = false
+
+    private var current: URL?
+    private var task: Task<Void, Never>?
+
+    func load(_ url: URL?) {
+        if current == url { return }
+        current = url
+        task?.cancel()
+        image = nil
+
+        guard let url else {
+            isLoading = false
+            return
+        }
+        if let hit = ImageCache.shared.cached(url) {
+            image = hit
+            isLoading = false
+            return
+        }
+
+        isLoading = true
+        task = Task { [weak self] in
+            let fetched = await ImageCache.shared.load(url)
+            guard !Task.isCancelled else { return }
+            DispatchQueue.main.async {
+                self?.image = fetched
+                self?.isLoading = false
+            }
+        }
+    }
+}
+
 // MARK: - 海报卡
 
 struct PosterCard: View {
@@ -54,6 +88,8 @@ struct PosterCard: View {
     var badge: String?
     var year: String?
     var sourceName: String?
+    /// 宽 / 高：竖版 2/3，横版 16/9、3/2
+    var aspect: CGFloat = 2.0 / 3.0
 
     @EnvironmentObject private var app: AppState
 
@@ -61,7 +97,7 @@ struct PosterCard: View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 Color.clear
-                    .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                    .aspectRatio(aspect, contentMode: .fit)
                     .overlay(
                         RemoteImage(url: app.imageURL(poster))
                     )

@@ -254,8 +254,8 @@ final class PlayerModel: ObservableObject {
                 player.rate = max(0.5, playbackRate)
             }
         case .failed:
-            if !context.proxyMode && !useProxy {
-                // 直连失败时自动走一次服务端代理（部分片源需要 Referer/跨域中转）
+            if !useProxy {
+                // 直连失败时自动走一次免鉴权的服务端代理（部分片源需要 Referer/跨域中转）
                 useProxy = true
                 let resume = currentTime
                 load(index: currentIndex, startTime: resume, autoplay: true)
