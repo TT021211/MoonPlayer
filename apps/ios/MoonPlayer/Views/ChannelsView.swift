@@ -27,6 +27,12 @@ struct ChannelsView: View {
                             Text("正在同步采集源…")
                                 .font(.system(size: 12))
                                 .foregroundColor(Theme.textTertiary)
+                            Spacer()
+                            Button("重新加载") {
+                                Task { await app.refreshSources() }
+                            }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Theme.accent)
                         }
                         .padding(.top, 4)
                     }

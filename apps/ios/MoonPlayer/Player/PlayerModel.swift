@@ -261,11 +261,32 @@ final class PlayerModel: ObservableObject {
                 load(index: currentIndex, startTime: resume, autoplay: true)
             } else {
                 isBuffering = false
-                errorMessage = item.error?.localizedDescription ?? "无法播放该视频，换一集或换一个源试试"
+                errorMessage = friendlyError(item.error)
             }
         default:
             break
         }
+    }
+
+    private func friendlyError(_ error: Error?) -> String {
+        if let error = error as NSError? {
+            if error.domain == NSURLErrorDomain {
+                switch error.code {
+                case NSURLErrorNotConnectedToInternet:
+                    return "网络未连接，请检查网络后重试"
+                case NSURLErrorTimedOut:
+                    return "连接片源超时，换一集或换一个源试试"
+                case NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost, NSURLErrorNetworkConnectionLost:
+                    return "片源服务器连接失败，换一集或换一个源试试"
+                default:
+                    break
+                }
+            }
+            if error.domain == AVFoundationErrorDomain {
+                return "片源无法解码或地址已过期，换一集或换一个源试试"
+            }
+        }
+        return "无法播放该视频，换一集或换一个源试试"
     }
 
     private func applyTimeControl(_ status: AVPlayer.TimeControlStatus) {

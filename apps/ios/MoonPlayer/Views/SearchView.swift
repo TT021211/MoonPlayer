@@ -32,6 +32,7 @@ struct SearchView: View {
                 }
             }
             .background(Theme.background.ignoresSafeArea())
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("搜索")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
