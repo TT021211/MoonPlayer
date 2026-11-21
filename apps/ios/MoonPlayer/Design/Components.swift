@@ -132,6 +132,7 @@ struct ChipButton: View {
 struct SectionHeader: View {
     let title: String
     var trailing: String?
+    var destination: AnyView?
     var action: (() -> Void)?
 
     var body: some View {
@@ -141,7 +142,13 @@ struct SectionHeader: View {
                 .foregroundColor(.white)
             Spacer()
             if let trailing {
-                if let action {
+                if let destination {
+                    NavigationLink(destination: destination) {
+                        Text(trailing)
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                } else if let action {
                     Button(action: action) {
                         Text(trailing)
                             .font(.system(size: 12.5, weight: .medium))

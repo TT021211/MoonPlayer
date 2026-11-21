@@ -305,7 +305,9 @@ struct DetailView: View {
         guard let detail else { return }
         Task {
             do {
-                isFavorite = try await app.toggleFavorite(detail: detail, fallbackSourceKey: sourceKey)
+                let nowFavorite = try await app.toggleFavorite(detail: detail, fallbackSourceKey: sourceKey)
+                isFavorite = nowFavorite
+                if nowFavorite { Haptics.success() } else { Haptics.light() }
             } catch {
                 alertText = error.localizedDescription
                 showAlert = true

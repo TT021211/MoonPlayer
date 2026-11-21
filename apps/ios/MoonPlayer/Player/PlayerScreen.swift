@@ -163,6 +163,7 @@ struct PlayerScreen: View {
 
     private func handleDoubleTap(at location: CGPoint, size: CGSize) {
         pendingSingleTap?.cancel()
+        Haptics.light()
         if location.x < size.width * 0.36 {
             model.seek(by: -10)
             flash("快退 10 秒")
@@ -318,6 +319,7 @@ struct PlayerScreen: View {
 
             HStack(spacing: 26) {
                 Button {
+                    Haptics.selection()
                     model.previous()
                 } label: {
                     Image(systemName: "backward.end.fill")
@@ -327,6 +329,7 @@ struct PlayerScreen: View {
                 .disabled(model.currentIndex == 0)
 
                 Button {
+                    Haptics.light()
                     model.playPause()
                 } label: {
                     Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
@@ -336,6 +339,7 @@ struct PlayerScreen: View {
                 }
 
                 Button {
+                    Haptics.selection()
                     model.next()
                 } label: {
                     Image(systemName: "forward.end.fill")
@@ -466,6 +470,7 @@ struct PlayerScreen: View {
             List {
                 ForEach(Array(model.context.episodes.indices), id: \.self) { index in
                     Button {
+                        Haptics.selection()
                         model.load(index: index, startTime: 0, autoplay: true)
                         showEpisodes = false
                     } label: {

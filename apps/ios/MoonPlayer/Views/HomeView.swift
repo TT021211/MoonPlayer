@@ -70,7 +70,7 @@ struct HomeView: View {
 
     private var continueSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "继续观看", trailing: "全部", action: nil)
+            SectionHeader(title: "继续观看", trailing: "全部", destination: AnyView(HistoryView()))
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(app.records.prefix(12)) { record in
@@ -94,7 +94,7 @@ struct HomeView: View {
 
     private var channelSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "频道", trailing: "查看全部", action: nil)
+            SectionHeader(title: "频道", trailing: nil, action: nil)
             LazyVGrid(columns: channelColumns, spacing: 12) {
                 ForEach(app.sources.prefix(8)) { source in
                     NavigationLink {
@@ -110,7 +110,7 @@ struct HomeView: View {
 
     private var favoriteSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "我的收藏", trailing: "全部", action: nil)
+            SectionHeader(title: "我的收藏", trailing: "全部", destination: AnyView(FavoritesView()))
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(app.favorites.prefix(12)) { favorite in
