@@ -490,11 +490,12 @@ final class AppState: ObservableObject {
         // 直连失败时播放器会自动降级到免鉴权的 /api/proxy-m3u8。
         _ = proxyMode
         if forceProxy {
+            // 注意：source=directplay 会把分片改写到需要登录态的 /api/proxy/vod/segment，
+            // AVPlayer 带不了 Bearer，所以这里用真实 source，只代理播放列表，分片保持直连。
             return proxyURL(
                 path: "/api/proxy-m3u8",
                 target: raw,
-                sourceKey: "directplay",
-                extra: [URLQueryItem(name: "proxySegments", value: "true")]
+                sourceKey: sourceKey
             ) ?? direct
         }
         return direct

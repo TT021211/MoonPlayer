@@ -5,17 +5,25 @@ MoonPlayer（MoonTV / MoonTVPlus 自建影库）的 iOS 原生客户端，SwiftU
 ## 功能（核心版）
 
 - 登录自建服务器（`/api/login`，Bearer Token；地址可在登录页修改，默认 `https://tv.acxou.hair`）
-- 首页：继续观看、频道入口、收藏速览，下拉刷新
-- 频道：读取 `/api/source-search/sources`，支持全部分类（含 hohoj 数百个标签，分组 + 搜索）
+- 首页与网页端一致：
+  - 豆瓣热门轮播（`/api/tmdb/trending`）
+  - 热门电影 / 热门剧集 / 热门综艺 / 即将上映横向片单
+  - 点击豆瓣/TMDB 卡片 → 按标题全源找片 → 进入详情
+- 频道与网页端左侧栏一致（12 个入口，不再展示原始采集源列表）：
+  - 电影 / 剧集 / 动漫 / 综艺（豆瓣片单，支持分类筛选与无限滚动）
+  - 深夜剧场 / 心动剧场 / HoHo剧场 / KinoStream / BJ剧场 / 奈飞工厂 / Pornhub / xHamster
 - 频道内搜索、全局聚合搜索（`/api/search`）
 - 详情页：海报、简介、选集、收藏
 - 原生 HLS 播放（AVPlayer）：
   - 单击显隐控制栏、双击左右快退/快进 10 秒、中间双击暂停
   - 横向拖动进度、左半屏上下调亮度、右半屏上下调音量
   - 选集、倍速、横竖屏切换、自动连播
-  - 直连失败自动降级一次服务端代理（`/api/proxy-m3u8`），proxyMode 源走 `/api/proxy/vod/m3u8`
+  - 原生端优先直连（无 CORS 限制）；失败自动降级到免鉴权的 `/api/proxy-m3u8`
+  - 音频走 `.playback`，静音键打开时也有声音；播放时保持屏幕常亮
 - 收藏 / 播放历史（云端同步，与 Web 端共用 `/api/favorites`、`/api/playrecords`）
-- 深色主题、原生 TabBar / NavigationStack / 大标题 / 下拉刷新 / 侧滑返回 / 长按菜单
+- 深色主题、原生 TabBar / NavigationStack / 大标题 / 下拉刷新 / 侧滑返回 / 长按菜单 / 震动反馈
+- 图片加载带 Bearer Token（`/api/image-proxy` 在鉴权中间件后面）＋ 内存/磁盘缓存
+- Access Token 4 小时自动用 refreshToken 续期，401 对调用方透明
 
 ## 目录
 

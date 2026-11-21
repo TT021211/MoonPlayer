@@ -53,7 +53,7 @@ final class RemoteImageLoader: ObservableObject {
     private var task: Task<Void, Never>?
 
     func load(_ url: URL?) {
-        if current == url { return }
+        if current == url, image != nil || isLoading { return }
         current = url
         task?.cancel()
         image = nil
