@@ -272,14 +272,14 @@ struct HomeView: View {
         )
         async let tvRequest = app.fetchDoubanCategories(
             kind: "tv",
-            category: "最近热门",
+            category: "tv",
             type: "tv",
             start: 0,
             limit: 20
         )
         async let varietyRequest = app.fetchDoubanCategories(
             kind: "tv",
-            category: "最近热门",
+            category: "show",
             type: "show",
             start: 0,
             limit: 20

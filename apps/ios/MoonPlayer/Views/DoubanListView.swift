@@ -247,7 +247,7 @@ struct DoubanListView: View {
                     id: pair.1,
                     label: pair.0,
                     apiKind: "tv",
-                    category: "最近热门",
+                    category: "tv",
                     type: pair.1,
                     format: "",
                     useRecommends: false
@@ -263,7 +263,7 @@ struct DoubanListView: View {
                     id: pair.1,
                     label: pair.0,
                     apiKind: "tv",
-                    category: "最近热门",
+                    category: "show",
                     type: pair.1,
                     format: "",
                     useRecommends: false
