@@ -20,9 +20,9 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 26) {
-                    if trending.isEmpty && isLoading {
+                    if bannerItems.isEmpty && isLoading {
                         bannerSkeleton
-                    } else if !trending.isEmpty {
+                    } else if !bannerItems.isEmpty {
                         banner
                     }
 
@@ -68,8 +68,8 @@ struct HomeView: View {
             .onReceive(bannerTimer) { _ in
                 advanceBanner()
             }
-            .onChange(of: trending.count) { _ in
-                if bannerIndex >= min(trending.count, 6) {
+            .onChange(of: bannerItems.count) { _ in
+                if bannerIndex >= min(bannerItems.count, 6) {
                     bannerIndex = 0
                 }
             }
@@ -80,24 +80,41 @@ struct HomeView: View {
 
     private var banner: some View {
         VStack(spacing: 9) {
-            TabView(selection: $bannerIndex) {
-                ForEach(Array(trending.prefix(6).indices), id: \.self) { index in
-                    let item = trending[index]
+            ZStack {
+                if let item = currentBanner {
                     NavigationLink {
-                        TitleSearchView(title: item.displayTitle)
+                        TitleSearchView(title: item.title)
                     } label: {
                         bannerSlide(item)
                     }
                     .buttonStyle(.plain)
-                    .tag(index)
+                    .id(item.id)
+                    .transition(.opacity)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(maxWidth: .infinity)
             .frame(height: 218)
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24)
+                    .onEnded { value in
+                        guard bannerItems.count > 1 else { return }
+                        if value.translation.width < -40 {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                bannerIndex = (bannerIndex + 1) % bannerItems.count
+                            }
+                        } else if value.translation.width > 40 {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                bannerIndex = (bannerIndex - 1 + bannerItems.count) % bannerItems.count
+                            }
+                        }
+                    }
+            )
+            .animation(.easeInOut(duration: 0.3), value: bannerIndex)
 
-            if min(trending.count, 6) > 1 {
+            if min(bannerItems.count, 6) > 1 {
                 HStack(spacing: 5) {
-                    ForEach(0..<min(trending.count, 6), id: \.self) { index in
+                    ForEach(0..<min(bannerItems.count, 6), id: \.self) { index in
                         Capsule()
                             .fill(index == bannerIndex ? Theme.accent : Color.white.opacity(0.18))
                             .frame(width: index == bannerIndex ? 16 : 5, height: 5)
@@ -106,12 +123,18 @@ struct HomeView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(.top, 2)
     }
 
-    private func bannerSlide(_ item: TrendingItem) -> some View {
+    private var currentBanner: BannerItem? {
+        guard !bannerItems.isEmpty else { return nil }
+        return bannerItems[min(max(0, bannerIndex), bannerItems.count - 1)]
+    }
+
+    private func bannerSlide(_ item: BannerItem) -> some View {
         ZStack(alignment: .bottomLeading) {
-            RemoteImage(url: app.imageURL(item.backdrop_path ?? item.poster_path))
+            RemoteImage(url: app.imageURL(item.image))
                 .frame(maxWidth: .infinity)
                 .frame(height: 218)
                 .clipped()
@@ -123,20 +146,20 @@ struct HomeView: View {
             )
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.displayTitle)
+                Text(item.title)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(2)
 
                 HStack(spacing: 8) {
-                    if let rate = item.vote_average, rate > 0 {
+                    if let rate = item.rate, rate > 0 {
                         Text(String(format: "★ %.1f", rate))
                             .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.25))
                     }
-                    if !item.displayYear.isEmpty {
-                        Text(item.displayYear)
+                    if !item.year.isEmpty {
+                        Text(item.year)
                     }
-                    Text(item.media_type == "tv" ? "剧集" : "电影")
+                    Text(item.mediaType == "tv" ? "剧集" : "电影")
                 }
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.white.opacity(0.72))
@@ -159,12 +182,74 @@ struct HomeView: View {
             }
             .padding(14)
         }
+        .frame(maxWidth: .infinity)
         .frame(height: 218)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Theme.stroke, lineWidth: 0.5)
         )
+    }
+
+    // MARK: - 轮播数据（TMDB / 豆瓣 / TX 统一 + 兜底）
+
+    private struct BannerItem: Identifiable {
+        let id: String
+        let title: String
+        let image: String?
+        let year: String
+        let rate: Double?
+        let mediaType: String
+        let overview: String?
+    }
+
+    private var bannerItems: [BannerItem] {
+        if !trending.isEmpty {
+            return trending.prefix(6).map { item in
+                BannerItem(
+                    id: item.id,
+                    title: item.displayTitle,
+                    image: resolvedTrendingImage(item),
+                    year: item.displayYear,
+                    rate: item.vote_average,
+                    mediaType: item.media_type ?? "movie",
+                    overview: item.overview
+                )
+            }
+        }
+
+        // 兜底：/api/tmdb/trending 失败或为空时，用首页热门片单做轮播
+        let pool: [DoubanItem]
+        if !hotMovies.isEmpty {
+            pool = hotMovies
+        } else if !hotTVShows.isEmpty {
+            pool = hotTVShows
+        } else {
+            pool = hotVariety
+        }
+        return pool.prefix(6).map { item in
+            BannerItem(
+                id: "fallback-\(item.id)",
+                title: item.title,
+                image: item.poster,
+                year: item.year ?? "",
+                rate: Double(item.rate ?? ""),
+                mediaType: "movie",
+                overview: nil
+            )
+        }
+    }
+
+    private func resolvedTrendingImage(_ item: TrendingItem) -> String? {
+        guard let raw = item.backdrop_path ?? item.poster_path,
+              !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        if raw.hasPrefix("http://") || raw.hasPrefix("https://") || raw.hasPrefix("//") {
+            return raw
+        }
+        // TMDB 数据源给的是 /xxxx.jpg 路径，必须补 image.tmdb.org 前缀
+        return AppState.tmdbImageURL(raw, size: "original")
     }
 
     private var bannerSkeleton: some View {
@@ -286,13 +371,16 @@ struct HomeView: View {
         )
         async let upcomingRequest = app.fetchUpcoming()
 
-        trending = (try? await trendingRequest) ?? []
         hotMovies = (try? await movieRequest) ?? []
         hotTVShows = (try? await tvRequest) ?? []
         hotVariety = (try? await varietyRequest) ?? []
         upcoming = (try? await upcomingRequest) ?? []
 
+        // 先让片单/兜底轮播出来，不被 /api/tmdb/trending 的慢请求拖住
         isLoading = false
+        saveCache()
+
+        trending = (try? await trendingRequest) ?? []
         saveCache()
     }
 
@@ -348,7 +436,7 @@ struct HomeView: View {
     }
 
     private func advanceBanner() {
-        let count = min(trending.count, 6)
+        let count = min(bannerItems.count, 6)
         guard count > 1 else { return }
         withAnimation(.easeInOut(duration: 0.45)) {
             bannerIndex = (bannerIndex + 1) % count
