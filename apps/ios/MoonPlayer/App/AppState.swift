@@ -15,13 +15,14 @@ final class AppState: ObservableObject {
     @Published var bootError: String?
 
     /// 默认开启：播放列表和分片都走服务端代理，占用 VPS 落盘缓存（列表 1h / 分片 72h）。
+    /// 用新 key，避免旧版本“强制代理”测试留下的 false 把缓存默认关掉。
     @Published var forceProxy: Bool = {
-        if UserDefaults.standard.object(forKey: "player.forceProxy") == nil {
-            return true
+        if let stored = UserDefaults.standard.object(forKey: "player.serverCache") as? Bool {
+            return stored
         }
-        return UserDefaults.standard.bool(forKey: "player.forceProxy")
+        return true
     }() {
-        didSet { UserDefaults.standard.set(forceProxy, forKey: "player.forceProxy") }
+        didSet { UserDefaults.standard.set(forceProxy, forKey: "player.serverCache") }
     }
 
     @Published var toast: String?
