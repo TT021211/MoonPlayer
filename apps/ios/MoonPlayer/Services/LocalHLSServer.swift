@@ -239,6 +239,13 @@ final class LocalHLSServer {
             return
         }
 
+        // fMP4 的 BYTERANGE 可能是同一个大文件里的不同区间：未缓存时直接透传 Range，
+        // 不把整个 main.mp4 拉到手机本地。播放列表永远走完整抓取+重写。
+        if method == "GET", entry.kind == .media, let rangeHeader {
+            forwardRange(connection, url: url, rangeHeader: rangeHeader)
+            return
+        }
+
         loadResource(hash: hash, url: url, kind: entry.kind) { [weak self] result in
             guard let self else { return }
             switch result {
@@ -303,8 +310,75 @@ final class LocalHLSServer {
         sendResponse(connection, status: "200 OK", headers: headers, body: data)
     }
 
-    private func sendText(_ connection: NWConnection, status: String, text: String) {
-        let body = Data(text.utf8)
+    private func forwardRange(_ connection: NWConnection, url: URL, rangeHeader: String) {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        request.setValue(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
+            forHTTPHeaderField: "User-Agent"
+        )
+        request.setValue(rangeHeader, forHTTPHeaderField: "Range")
+
+        session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
+            self.queue.async {
+                guard error == nil,
+                      let http = response as? HTTPURLResponse,
+                      let data else {
+                    self.sendText(connection, status: "502 Bad Gateway", text: "Bad Gateway")
+                    return
+                }
+
+                let contentType = http.value(forHTTPHeaderField: "Content-Type")
+                    ?? "application/octet-stream"
+
+                if http.statusCode == 206 {
+                    var headers: [String: String] = [
+                        "Content-Type": contentType,
+                        "Accept-Ranges": "bytes",
+                        "Cache-Control": "no-store",
+                        "Content-Length": String(data.count)
+                    ]
+                    if let contentRange = http.value(forHTTPHeaderField: "Content-Range") {
+                        headers["Content-Range"] = contentRange
+                    }
+                    self.sendResponse(connection, status: "206 Partial Content", headers: headers, body: data)
+                    return
+                }
+
+                guard (200..<300).contains(http.statusCode) else {
+                    self.sendText(connection, status: "502 Bad Gateway", text: "Bad Gateway")
+                    return
+                }
+
+                let total = data.count
+                if let range = self.parseRange(rangeHeader, total: total) {
+                    let body = data.subdata(in: range.start..<(range.end + 1))
+                    let headers: [String: String] = [
+                        "Content-Type": contentType,
+                        "Accept-Ranges": "bytes",
+                        "Cache-Control": "no-store",
+                        "Content-Range": "bytes \(range.start)-\(range.end)/\(total)",
+                        "Content-Length": String(body.count)
+                    ]
+                    self.sendResponse(connection, status: "206 Partial Content", headers: headers, body: body)
+                } else {
+                    self.sendResponse(
+                        connection,
+                        status: "200 OK",
+                        headers: [
+                            "Content-Type": contentType,
+                            "Content-Length": String(total),
+                            "Cache-Control": "no-store"
+                        ],
+                        body: data
+                    )
+                }
+            }
+        }.resume()
+    }
+
+    private func sendText(_ connection: NWConnection, status: String, text: String) {        let body = Data(text.utf8)
         sendResponse(
             connection,
             status: status,

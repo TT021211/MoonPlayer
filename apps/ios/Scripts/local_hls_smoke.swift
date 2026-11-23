@@ -6,7 +6,7 @@ struct LocalHLSSmoke {
         LocalHLSServer.shared.startIfNeeded()
 
         let original = URL(
-            string: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8"
+            string: "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8"
         )!
 
         var local: URL?
@@ -50,16 +50,27 @@ struct LocalHLSSmoke {
             fatalError("no segment hash")
         }
 
+        // 先整片拉一次，验证边看边存
+        let (segmentData, segmentResponse) = try! await session.data(from: segmentURL)
+        guard let segmentHTTP = segmentResponse as? HTTPURLResponse,
+              segmentHTTP.statusCode == 200,
+              !segmentData.isEmpty else {
+            let status = (segmentResponse as? HTTPURLResponse)?.statusCode ?? -1
+            fatalError("segment failed status=\(status) bytes=\(segmentData.count)")
+        }
+        print("segment ok bytes=\(segmentData.count)")
+
+        // 再从本地缓存取 Range，验证 206
         var request = URLRequest(url: segmentURL)
         request.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
-        let (segmentData, segmentResponse) = try! await session.data(for: request)
-        guard let segmentHTTP = segmentResponse as? HTTPURLResponse,
-              segmentHTTP.statusCode == 206,
-              segmentData.count == 1024 else {
-            let status = (segmentResponse as? HTTPURLResponse)?.statusCode ?? -1
-            fatalError("segment range failed status=\(status) bytes=\(segmentData.count)")
+        let (rangeData, rangeResponse) = try! await session.data(for: request)
+        guard let rangeHTTP = rangeResponse as? HTTPURLResponse,
+              rangeHTTP.statusCode == 206,
+              rangeData.count == 1024 else {
+            let status = (rangeResponse as? HTTPURLResponse)?.statusCode ?? -1
+            fatalError("segment range failed status=\(status) bytes=\(rangeData.count)")
         }
-        print("segment range ok bytes=\(segmentData.count)")
+        print("segment range ok bytes=\(rangeData.count)")
 
         let cached = LocalHLSServer.shared.cacheSizeBytes
         print("cache bytes=\(cached)")
