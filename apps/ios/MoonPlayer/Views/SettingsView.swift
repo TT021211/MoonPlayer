@@ -8,10 +8,10 @@ struct SettingsView: View {
             Section {
                 Toggle(isOn: $app.forceProxy) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("强制服务端代理播放")
+                        Text("边看边缓存（服务端代理）")
                             .font(.system(size: 15))
                             .foregroundColor(.white.opacity(0.92))
-                        Text("直连失败或片源限制 Referer 时，改走服务器的 m3u8 代理")
+                        Text("播放列表和分片经服务器边下边存：列表 1 小时、分片 72 小时，手机不占空间")
                             .font(.system(size: 11))
                             .foregroundColor(Theme.textTertiary)
                     }
@@ -21,7 +21,7 @@ struct SettingsView: View {
             } header: {
                 Text("播放")
             } footer: {
-                Text("播放器默认直连；遇到黑屏、403 或一直转圈时会自动尝试一次服务端代理。")
+                Text("默认开启。关闭后直连原片；播放失败会自动在「缓存代理 / 直连」之间切换一次。需要服务端已更新分片代理路由。")
                     .font(.system(size: 11))
                     .foregroundColor(Theme.textTertiary.opacity(0.85))
             }

@@ -272,6 +272,14 @@ struct PlayerScreen: View {
 
             Spacer(minLength: 0)
 
+            Text(model.preferProxy ? "缓存" : "直连")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(model.preferProxy ? Theme.accent : .white.opacity(0.6))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.black.opacity(0.35))
+                .clipShape(Capsule())
+
             Text("\(model.currentIndex + 1)/\(model.context.episodes.count)")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
@@ -443,8 +451,16 @@ struct PlayerScreen: View {
                 .background(Theme.surfaceHigh)
                 .clipShape(Capsule())
 
-                if !model.context.proxyMode {
-                    Button("走服务端代理") {
+                if model.preferProxy {
+                    Button("改用直连") {
+                        model.retryWithDirect()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Theme.surfaceHigh)
+                    .clipShape(Capsule())
+                } else {
+                    Button("边看边缓存") {
                         model.retryWithProxy()
                     }
                     .padding(.horizontal, 16)

@@ -13,7 +13,7 @@ final class PlayerModel: ObservableObject {
     @Published var isBuffering = true
     @Published var errorMessage: String?
     @Published var playbackRate: Float = 1.0
-    @Published var useProxy = false
+    @Published var preferProxy = false
 
     private weak var app: AppState?
     private var timeObserver: Any?
@@ -23,6 +23,7 @@ final class PlayerModel: ObservableObject {
     private var hideWorkItem: DispatchWorkItem?
     private var lastSaved: Double = -100
     private var didStop = false
+    private var didFallback = false
 
     init(context: PlaybackContext) {
         self.context = context
@@ -36,6 +37,8 @@ final class PlayerModel: ObservableObject {
     func configure(app: AppState) {
         guard self.app == nil else { return }
         self.app = app
+        preferProxy = app.forceProxy
+        didFallback = false
         installObservers()
         load(index: currentIndex, startTime: context.startTime, autoplay: true)
     }
@@ -92,6 +95,10 @@ final class PlayerModel: ObservableObject {
         guard index >= 0, index < context.episodes.count else { return }
         guard let app else { return }
 
+        if index != currentIndex {
+            didFallback = false
+        }
+
         currentIndex = index
         errorMessage = nil
         isBuffering = true
@@ -103,7 +110,7 @@ final class PlayerModel: ObservableObject {
             episode: context.episodes[index],
             sourceKey: context.sourceKey,
             proxyMode: context.proxyMode,
-            forceProxy: app.forceProxy || useProxy
+            forceProxy: preferProxy
         )
         guard let url else {
             isBuffering = false
@@ -112,7 +119,8 @@ final class PlayerModel: ObservableObject {
         }
 
         let item = AVPlayerItem(url: url)
-        item.preferredForwardBufferDuration = 6
+        // 预缓冲 20 秒，给服务端落盘缓存留出提前拉片的时间
+        item.preferredForwardBufferDuration = 20
 
         statusObservation?.invalidate()
         statusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
@@ -171,21 +179,32 @@ final class PlayerModel: ObservableObject {
 
     func next() {
         guard currentIndex + 1 < context.episodes.count else { return }
+        didFallback = false
         load(index: currentIndex + 1, startTime: 0, autoplay: true)
     }
 
     func previous() {
         guard currentIndex > 0 else { return }
+        didFallback = false
         load(index: currentIndex - 1, startTime: 0, autoplay: true)
     }
 
     func retry() {
+        didFallback = false
         errorMessage = nil
         load(index: currentIndex, startTime: currentTime, autoplay: true)
     }
 
     func retryWithProxy() {
-        useProxy = true
+        preferProxy = true
+        didFallback = true
+        errorMessage = nil
+        load(index: currentIndex, startTime: currentTime, autoplay: true)
+    }
+
+    func retryWithDirect() {
+        preferProxy = false
+        didFallback = true
         errorMessage = nil
         load(index: currentIndex, startTime: currentTime, autoplay: true)
     }
@@ -254,9 +273,10 @@ final class PlayerModel: ObservableObject {
                 player.rate = max(0.5, playbackRate)
             }
         case .failed:
-            if !useProxy {
-                // 直连失败时自动走一次免鉴权的服务端代理（部分片源需要 Referer/跨域中转）
-                useProxy = true
+            if !didFallback {
+                // 代理缓存和直连各试一次（例如服务端未更新、跨域/防盗链、缓存不可用）
+                didFallback = true
+                preferProxy.toggle()
                 let resume = currentTime
                 load(index: currentIndex, startTime: resume, autoplay: true)
             } else {

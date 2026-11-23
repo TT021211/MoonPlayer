@@ -14,7 +14,13 @@ final class AppState: ObservableObject {
     @Published var records: [PlayRecordItem] = []
     @Published var bootError: String?
 
-    @Published var forceProxy: Bool = UserDefaults.standard.bool(forKey: "player.forceProxy") {
+    /// 默认开启：播放列表和分片都走服务端代理，占用 VPS 落盘缓存（列表 1h / 分片 72h）。
+    @Published var forceProxy: Bool = {
+        if UserDefaults.standard.object(forKey: "player.forceProxy") == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: "player.forceProxy")
+    }() {
         didSet { UserDefaults.standard.set(forceProxy, forKey: "player.forceProxy") }
     }
 
@@ -490,12 +496,13 @@ final class AppState: ObservableObject {
         // 直连失败时播放器会自动降级到免鉴权的 /api/proxy-m3u8。
         _ = proxyMode
         if forceProxy {
-            // 注意：source=directplay 会把分片改写到需要登录态的 /api/proxy/vod/segment，
-            // AVPlayer 带不了 Bearer，所以这里用真实 source，只代理播放列表，分片保持直连。
+            // 服务端代理 + 分片落盘：proxySegments=true 会把 ts/密钥改写到
+            // /api/proxy/vod/segment（边下边存），播放列表 1h、分片 72h。
             return proxyURL(
                 path: "/api/proxy-m3u8",
                 target: raw,
-                sourceKey: sourceKey
+                sourceKey: "directplay",
+                extra: [URLQueryItem(name: "proxySegments", value: "true")]
             ) ?? direct
         }
         return direct
