@@ -33,6 +33,19 @@ jobs:
           set -euo pipefail
           xcodegen generate
 
+      - name: Local HLS cache smoke test
+        working-directory: apps/ios
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          swiftc -parse-as-library \
+            MoonPlayer/Services/LocalHLSServer.swift \
+            Scripts/local_hls_smoke.swift \
+            -o build/hls-smoke \
+            -framework Network
+          ./build/hls-smoke 2>&1 | tee build/hls-smoke.log
+
       - name: Build unsigned archive
         working-directory: apps/ios
         env:

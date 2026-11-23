@@ -109,6 +109,7 @@ struct PlayerScreen: View {
         .onChange(of: scenePhase) { phase in
             if phase != .active {
                 model.save(force: true)
+                LocalHLSServer.shared.flushIndex()
             }
         }
         .sheet(isPresented: $showEpisodes) {

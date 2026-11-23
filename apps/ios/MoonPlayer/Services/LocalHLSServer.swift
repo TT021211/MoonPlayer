@@ -280,6 +280,12 @@ final class LocalHLSServer {
         }
 
         if let rangeHeader {
+            // 播放列表不做 Range 切片，避免客户端只拿到半截 m3u8
+            if contentType.lowercased().contains("mpegurl") {
+                headers["Content-Length"] = String(total)
+                sendResponse(connection, status: "200 OK", headers: headers, body: data)
+                return
+            }
             guard let range = parseRange(rangeHeader, total: total) else {
                 headers["Content-Range"] = "bytes */\(total)"
                 headers["Content-Length"] = "0"
