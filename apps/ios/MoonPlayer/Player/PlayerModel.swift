@@ -14,6 +14,7 @@ final class PlayerModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var playbackRate: Float = 1.0
     @Published var preferProxy = false
+    @Published var useLocalCache = false
 
     private weak var app: AppState?
     private var timeObserver: Any?
@@ -38,7 +39,9 @@ final class PlayerModel: ObservableObject {
         guard self.app == nil else { return }
         self.app = app
         preferProxy = app.forceProxy
+        useLocalCache = app.localCacheEnabled
         didFallback = false
+        LocalHLSServer.shared.startIfNeeded()
         installObservers()
         load(index: currentIndex, startTime: context.startTime, autoplay: true)
     }
@@ -118,8 +121,17 @@ final class PlayerModel: ObservableObject {
             return
         }
 
-        let item = AVPlayerItem(url: url)
-        // 预缓冲 20 秒，给服务端落盘缓存留出提前拉片的时间
+        var playbackURL = url
+        if useLocalCache {
+            if let local = LocalHLSServer.shared.makePlaylistURL(for: url) {
+                playbackURL = local
+            } else {
+                useLocalCache = false
+            }
+        }
+
+        let item = AVPlayerItem(url: playbackURL)
+        // 预缓冲 20 秒，给服务端/本地缓存留出提前拉片的时间
         item.preferredForwardBufferDuration = 20
 
         statusObservation?.invalidate()
@@ -190,6 +202,10 @@ final class PlayerModel: ObservableObject {
     }
 
     func retry() {
+        if let app {
+            preferProxy = app.forceProxy
+            useLocalCache = app.localCacheEnabled
+        }
         didFallback = false
         errorMessage = nil
         load(index: currentIndex, startTime: currentTime, autoplay: true)
@@ -273,6 +289,13 @@ final class PlayerModel: ObservableObject {
                 player.rate = max(0.5, playbackRate)
             }
         case .failed:
+            if useLocalCache {
+                // 本地代理失败（服务端未更新、上游拒连等）：先退回普通播放
+                useLocalCache = false
+                let resume = currentTime
+                load(index: currentIndex, startTime: resume, autoplay: true)
+                return
+            }
             if !didFallback {
                 // 代理缓存和直连各试一次（例如服务端未更新、跨域/防盗链、缓存不可用）
                 didFallback = true

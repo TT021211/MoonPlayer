@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var app: AppState
 
+    @State private var localCacheText = "计算中…"
+
     var body: some View {
         List {
             Section {
@@ -18,10 +20,23 @@ struct SettingsView: View {
                 }
                 .tint(Theme.accent)
                 .listRowBackground(Theme.surface)
+
+                Toggle(isOn: $app.localCacheEnabled) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("手机本地缓存（边看边存）")
+                            .font(.system(size: 15))
+                            .foregroundColor(.white.opacity(0.92))
+                        Text("播放列表和分片存到手机，提前预取；网络抖动时直接读本地，最多 2GB")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textTertiary)
+                    }
+                }
+                .tint(Theme.accent)
+                .listRowBackground(Theme.surface)
             } header: {
                 Text("播放")
             } footer: {
-                Text("默认开启。关闭后直连原片；播放失败会自动在「缓存代理 / 直连」之间切换一次。需要服务端已更新分片代理路由。")
+                Text("服务端缓存解决 VPS 到源站；手机本地缓存解决手机到 VPS，并支持已缓存部分离线播放。播放失败会自动逐级降级。")
                     .font(.system(size: 11))
                     .foregroundColor(Theme.textTertiary.opacity(0.85))
             }
@@ -34,6 +49,19 @@ struct SettingsView: View {
             }
 
             Section("缓存") {
+                infoRow("本地视频缓存", localCacheText)
+
+                Button {
+                    LocalHLSServer.shared.clearCache()
+                    refreshLocalCacheSize()
+                    app.showToast("本地视频缓存已清除")
+                } label: {
+                    Text("清除本地视频缓存")
+                        .font(.system(size: 15))
+                        .foregroundColor(Theme.accent)
+                }
+                .listRowBackground(Theme.surface)
+
                 Button {
                     ImageCache.shared.clear()
                     app.showToast("图片缓存已清除")
@@ -56,6 +84,14 @@ struct SettingsView: View {
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("播放与服务器")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            refreshLocalCacheSize()
+        }
+    }
+
+    private func refreshLocalCacheSize() {
+        let bytes = LocalHLSServer.shared.cacheSizeBytes
+        localCacheText = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
     private func infoRow(_ title: String, _ value: String) -> some View {

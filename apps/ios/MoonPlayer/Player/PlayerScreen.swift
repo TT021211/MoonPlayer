@@ -272,9 +272,13 @@ struct PlayerScreen: View {
 
             Spacer(minLength: 0)
 
-            Text(model.preferProxy ? "缓存" : "直连")
+            Text(model.useLocalCache ? "本地" : (model.preferProxy ? "缓存" : "直连"))
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(model.preferProxy ? Theme.accent : .white.opacity(0.6))
+                .foregroundColor(
+                    model.useLocalCache
+                        ? Color(red: 0.30, green: 0.80, blue: 0.55)
+                        : (model.preferProxy ? Theme.accent : .white.opacity(0.6))
+                )
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Color.black.opacity(0.35))

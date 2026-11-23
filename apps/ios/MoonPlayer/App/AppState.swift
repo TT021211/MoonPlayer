@@ -25,6 +25,16 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(forceProxy, forKey: "player.serverCache") }
     }
 
+    /// 手机本地 HLS 缓存（边看边存 + 提前预取），默认开启。
+    @Published var localCacheEnabled: Bool = {
+        if let stored = UserDefaults.standard.object(forKey: "player.localCache") as? Bool {
+            return stored
+        }
+        return true
+    }() {
+        didSet { UserDefaults.standard.set(localCacheEnabled, forKey: "player.localCache") }
+    }
+
     @Published var toast: String?
 
     private let defaults = UserDefaults.standard
@@ -45,6 +55,7 @@ final class AppState: ObservableObject {
         APIClient.shared.onTokenRefreshed = { newToken in
             Keychain.save(newToken, for: Keys.token)
         }
+        LocalHLSServer.shared.startIfNeeded()
     }
 
     // MARK: - 启动 / 登录
