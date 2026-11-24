@@ -17,12 +17,14 @@ final class PlayerModel: ObservableObject {
     @Published var preferProxy = false
     @Published var useLocalCache = false
     @Published var boostLocked = false
+    @Published private(set) var videoAspect: Double = 0
 
     private weak var app: AppState?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var statusObservation: NSKeyValueObservation?
     private var timeControlObservation: NSKeyValueObservation?
+    private var presentationObservation: NSKeyValueObservation?
     private var hideWorkItem: DispatchWorkItem?
     private var lastSaved: Double = -100
     private var didStop = false
@@ -86,6 +88,8 @@ final class PlayerModel: ObservableObject {
         statusObservation = nil
         timeControlObservation?.invalidate()
         timeControlObservation = nil
+        presentationObservation?.invalidate()
+        presentationObservation = nil
         player.replaceCurrentItem(with: nil)
     }
 
@@ -129,6 +133,7 @@ final class PlayerModel: ObservableObject {
         isBuffering = true
         duration = 0
         bufferedTime = 0
+        videoAspect = 0
         temporaryBoost = false
         currentTime = max(0, startTime)
         lastSaved = -100
@@ -165,7 +170,18 @@ final class PlayerModel: ObservableObject {
             }
         }
 
+        presentationObservation?.invalidate()
+        presentationObservation = nil
+
         player.replaceCurrentItem(with: item)
+        presentationObservation = item.observe(\.presentationSize, options: [.initial, .new]) { [weak self] item, _ in
+            let size = item.presentationSize
+            guard size.width > 0, size.height > 0 else { return }
+            DispatchQueue.main.async {
+                guard let self, self.player.currentItem === item else { return }
+                self.videoAspect = Double(size.width / size.height)
+            }
+        }
         if startTime > 1 {
             player.seek(
                 to: CMTime(seconds: startTime, preferredTimescale: 600),

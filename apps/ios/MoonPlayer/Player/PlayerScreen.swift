@@ -28,7 +28,7 @@ struct PlayerScreen: View {
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
-    @AppStorage("player.fillScreen") private var fillScreen = true
+    @AppStorage("player.fillMode") private var fillMode = 0
     @State private var isBoosting = false
     @State private var boostInteractionActive = false
     @State private var pressActive = false
@@ -55,7 +55,7 @@ struct PlayerScreen: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            PlayerLayerView(player: model.player, fill: fillScreen)
+            PlayerLayerView(player: model.player, fill: effectiveFill)
                 .ignoresSafeArea()
 
             gestureLayer
@@ -278,6 +278,12 @@ struct PlayerScreen: View {
         if isBoosting {
             endLongPressBoost()
         }
+        if boostInteractionActive {
+            suppressTapUntil = Date().addingTimeInterval(0.4)
+        }
+        if flashText == "已锁定 2x" {
+            flashText = nil
+        }
         boostInteractionActive = false
         lockedDuringPress = false
     }
@@ -287,6 +293,7 @@ struct PlayerScreen: View {
         let work = DispatchWorkItem {
             guard pressActive, !isBoosting else { return }
             if model.boostLocked {
+                boostInteractionActive = true
                 model.unlockBoost()
                 suppressTapUntil = Date().addingTimeInterval(0.4)
                 Haptics.light()
@@ -424,18 +431,19 @@ struct PlayerScreen: View {
             Spacer(minLength: 0)
 
             Button {
-                fillScreen.toggle()
+                let nextFill = !effectiveFill
+                fillMode = nextFill ? 1 : 2
                 Haptics.light()
-                flash(fillScreen ? "铺满画面" : "适应画面")
+                flash(nextFill ? "铺满画面" : "适应画面")
             } label: {
-                Image(systemName: fillScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                Image(systemName: effectiveFill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white.opacity(0.85))
                     .frame(width: 30, height: 30)
                     .background(Color.black.opacity(0.35))
                     .clipShape(Circle())
             }
-            .accessibilityLabel(fillScreen ? "切换为适应画面" : "切换为铺满画面")
+            .accessibilityLabel(effectiveFill ? "切换为适应画面" : "切换为铺满画面")
 
             Text(model.useLocalCache ? "本地" : (model.preferProxy ? "缓存" : "直连"))
                 .font(.system(size: 10, weight: .semibold))
@@ -749,6 +757,24 @@ struct PlayerScreen: View {
     }
 
     // MARK: - 工具
+
+    /// 自动铺满：画面比例与屏幕接近时裁切铺满；差距过大（如竖屏中的横屏视频）保持完整画面。
+    private var effectiveFill: Bool {
+        switch fillMode {
+        case 1: return true
+        case 2: return false
+        default: break
+        }
+
+        let screen = UIScreen.main.bounds.size
+        guard screen.width > 0, screen.height > 0 else { return isLandscape }
+        let screenAspect = Double(max(screen.width, screen.height) / min(screen.width, screen.height))
+        guard model.videoAspect > 0 else { return isLandscape }
+        if isLandscape {
+            return model.videoAspect >= screenAspect * 0.8
+        }
+        return model.videoAspect <= (1 / screenAspect) * 1.25
+    }
 
     private func toggleOrientation() {
         isLandscape.toggle()
