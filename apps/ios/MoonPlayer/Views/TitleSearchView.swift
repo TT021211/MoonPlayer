@@ -1,172 +1,47 @@
 import Foundation
 import SwiftUI
 
-/// 豆瓣 / TMDB 卡片点击后的“选片源”页：
-/// 按源分组（一个源只出最佳匹配），并对每个源做详情测速与清晰度识别。
-struct TitleSearchView: View {
+// MARK: - 片源选择模型
+
+final class SourcePickerModel: ObservableObject {
     let title: String
 
-    @EnvironmentObject private var app: AppState
+    @Published private(set) var options: [SourceOption] = []
+    @Published private(set) var isLoading = true
+    @Published private(set) var errorMessage: String?
 
-    @State private var options: [SourceOption] = []
-    @State private var isLoading = true
-    @State private var didLoad = false
-    @State private var errorMessage: String?
-    @State private var probeTask: Task<Void, Never>?
+    private weak var app: AppState?
+    private var probeTask: Task<Void, Never>?
+    private var didLoad = false
 
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                if isLoading && options.isEmpty {
-                    loadingView
-                } else if let errorMessage, options.isEmpty {
-                    ErrorStateView(message: errorMessage) {
-                        Task { await search() }
-                    }
-                    .padding(.top, 50)
-                } else if options.isEmpty {
-                    EmptyStateView(
-                        symbol: "magnifyingglass",
-                        title: "没有找到「\(title)」的片源",
-                        subtitle: "可以换个关键词，或到频道里按分类找"
-                    )
-                    .padding(.top, 50)
-                } else {
-                    header
-
-                    if let option = recommendedOption {
-                        NavigationLink {
-                            DetailView(
-                                sourceKey: option.sourceKey,
-                                videoID: option.result.id,
-                                previewTitle: option.result.title,
-                                previewPoster: option.result.poster
-                            )
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 12, weight: .bold))
-                                Text("播放推荐 · \(option.sourceName)")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                                if let quality = option.quality {
-                                    Text(quality)
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.82))
-                                }
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .frame(height: 46)
-                            .background(Theme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    ForEach(options) { option in
-                        NavigationLink {
-                            DetailView(
-                                sourceKey: option.sourceKey,
-                                videoID: option.result.id,
-                                previewTitle: option.result.title,
-                                previewPoster: option.result.poster
-                            )
-                        } label: {
-                            SourceOptionCard(
-                                option: option,
-                                recommended: option.id == recommendedID
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    footer
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 28)
-        }
-        .background(Theme.background.ignoresSafeArea())
-        .navigationTitle("选择片源")
-        .navigationBarTitleDisplayMode(.inline)
-        .refreshable {
-            await search()
-        }
-        .task {
-            guard !didLoad else { return }
-            didLoad = true
-            await search()
-        }
-        .onDisappear {
-            probeTask?.cancel()
-        }
+    init(title: String) {
+        self.title = title
     }
-
-    // MARK: - 头部 / 尾部
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.system(size: 21, weight: .bold))
-                .foregroundColor(.white)
-                .lineLimit(2)
-
-            HStack(spacing: 6) {
-                Text("找到 \(options.count) 个片源")
-                Text("·")
-                Text("按源分组，点击选择线路")
-            }
-            .font(.system(size: 11.5))
-            .foregroundColor(Theme.textTertiary)
-        }
-        .padding(.top, 4)
-        .padding(.bottom, 2)
-    }
-
-    private var footer: some View {
-        Text("延时为详情接口实测，越短越适合当前网络；清晰度取自片源标注或播放列表，未标注会显示「清晰度未标」。")
-            .font(.system(size: 10.5))
-            .foregroundColor(Theme.textTertiary.opacity(0.85))
-            .padding(.top, 6)
-            .padding(.horizontal, 2)
-    }
-
-    private var loadingView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 9) {
-                ProgressView().tint(Theme.textSecondary)
-                Text("正在搜索所有片源…")
-                    .font(.system(size: 13))
-                    .foregroundColor(Theme.textTertiary)
-            }
-            .padding(.top, 8)
-
-            ForEach(0..<5, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Theme.surface)
-                    .frame(height: 92)
-                    .overlay(
-                        HStack {
-                            Circle().fill(Theme.surfaceHigh).frame(width: 42, height: 42)
-                            VStack(alignment: .leading, spacing: 7) {
-                                RoundedRectangle(cornerRadius: 4).fill(Theme.surfaceHigh).frame(width: 110, height: 12)
-                                RoundedRectangle(cornerRadius: 4).fill(Theme.surfaceHigh).frame(width: 180, height: 9)
-                                RoundedRectangle(cornerRadius: 4).fill(Theme.surfaceHigh).frame(width: 150, height: 9)
-                            }
-                            .padding(.leading, 4)
-                            Spacer()
-                        }
-                        .padding(14)
-                    )
-            }
-        }
-    }
-
-    // MARK: - 数据
 
     @MainActor
-    private func search() async {
+    func configure(app: AppState) {
+        self.app = app
+        if didLoad {
+            if options.contains(where: { $0.state == .pending }) {
+                startProbes()
+            }
+            return
+        }
+        didLoad = true
+        Task { await self.search() }
+    }
+
+    @MainActor
+    func cancel() {
+        probeTask?.cancel()
+        for index in options.indices where options[index].state == .probing {
+            options[index].state = .pending
+        }
+    }
+
+    @MainActor
+    func search() async {
+        guard let app else { return }
         probeTask?.cancel()
         isLoading = true
         errorMessage = nil
@@ -181,7 +56,7 @@ struct TitleSearchView: View {
                 seen.insert(key)
                 return true
             }
-            options = makeOptions(from: deduped)
+            options = makeOptions(from: deduped, app: app)
             isLoading = false
             startProbes()
         } catch APIError.unauthorized {
@@ -192,7 +67,16 @@ struct TitleSearchView: View {
         }
     }
 
-    private func makeOptions(from results: [SearchResult]) -> [SourceOption] {
+    @MainActor
+    var recommendedOption: SourceOption? {
+        let ready = options.filter { $0.state == .ready && $0.episodeCount > 0 }
+        guard !ready.isEmpty else { return nil }
+        return ready.max { recommendationScore($0) < recommendationScore($1) }
+    }
+
+    // MARK: 分组
+
+    private func makeOptions(from results: [SearchResult], app: AppState) -> [SourceOption] {
         var groups: [String: [SearchResult]] = [:]
         var order: [String] = []
 
@@ -244,13 +128,14 @@ struct TitleSearchView: View {
             .joined()
     }
 
-    // MARK: - 测速 / 清晰度
+    // MARK: 测速 / 清晰度
 
     @MainActor
     private func startProbes() {
         let targets = options
         guard !targets.isEmpty else { return }
 
+        probeTask?.cancel()
         probeTask = Task {
             await withTaskGroup(of: Void.self) { group in
                 var iterator = targets.makeIterator()
@@ -286,6 +171,7 @@ struct TitleSearchView: View {
         let started = Date()
 
         do {
+            guard let app else { return }
             let detail = try await app.detail(
                 sourceKey: option.sourceKey,
                 videoID: option.result.id,
@@ -310,7 +196,6 @@ struct TitleSearchView: View {
         }
     }
 
-    /// 详情没标注清晰度时，抓一次首个 m3u8，读 master 里的 RESOLUTION。
     @MainActor
     private func probeM3U8Qualities() async {
         let targets = options
@@ -413,18 +298,6 @@ struct TitleSearchView: View {
         return nil
     }
 
-    // MARK: - 推荐
-
-    private var recommendedID: String? {
-        recommendedOption?.id
-    }
-
-    private var recommendedOption: SourceOption? {
-        let ready = options.filter { $0.state == .ready && $0.episodeCount > 0 }
-        guard !ready.isEmpty else { return nil }
-        return ready.max { recommendationScore($0) < recommendationScore($1) }
-    }
-
     private func recommendationScore(_ option: SourceOption) -> Int {
         let qualityRank: Int
         switch (option.quality ?? "").uppercased() {
@@ -439,11 +312,235 @@ struct TitleSearchView: View {
     }
 }
 
+// MARK: - 片源选择界面
+
+struct SourcePickerView: View {
+    let title: String
+    var currentSourceKey: String?
+    var showsHeader = true
+    let onSelect: (SourceOption) -> Void
+
+    @EnvironmentObject private var app: AppState
+    @StateObject private var model: SourcePickerModel
+
+    init(
+        title: String,
+        currentSourceKey: String? = nil,
+        showsHeader: Bool = true,
+        onSelect: @escaping (SourceOption) -> Void
+    ) {
+        self.title = title
+        self.currentSourceKey = currentSourceKey
+        self.showsHeader = showsHeader
+        self.onSelect = onSelect
+        _model = StateObject(wrappedValue: SourcePickerModel(title: title))
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                if model.isLoading && model.options.isEmpty {
+                    loadingView
+                } else if let errorMessage = model.errorMessage, model.options.isEmpty {
+                    ErrorStateView(message: errorMessage) {
+                        Task { await model.search() }
+                    }
+                    .padding(.top, 50)
+                } else if model.options.isEmpty {
+                    EmptyStateView(
+                        symbol: "magnifyingglass",
+                        title: "没有找到「\(title)」的片源",
+                        subtitle: "可以换个关键词，或到频道里按分类找"
+                    )
+                    .padding(.top, 50)
+                } else {
+                    if showsHeader {
+                        header
+                    }
+
+                    if let option = model.recommendedOption {
+                        Button {
+                            onSelect(option)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text("播放推荐 · \(option.sourceName)")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                                if let quality = option.quality {
+                                    Text(quality)
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.82))
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .frame(height: 46)
+                            .background(Theme.accent)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    ForEach(model.options) { option in
+                        Button {
+                            onSelect(option)
+                        } label: {
+                            SourceOptionCard(
+                                option: option,
+                                recommended: option.id == model.recommendedOption?.id,
+                                isCurrent: option.sourceKey == currentSourceKey
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    footer
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 28)
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .refreshable {
+            await model.search()
+        }
+        .task {
+            model.configure(app: app)
+        }
+        .onDisappear {
+            model.cancel()
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 21, weight: .bold))
+                .foregroundColor(.white)
+                .lineLimit(2)
+
+            HStack(spacing: 6) {
+                Text("找到 \(model.options.count) 个片源")
+                Text("·")
+                Text("按源分组，点击选择线路")
+            }
+            .font(.system(size: 11.5))
+            .foregroundColor(Theme.textTertiary)
+        }
+        .padding(.top, 4)
+        .padding(.bottom, 2)
+    }
+
+    private var footer: some View {
+        Text("延时为详情接口实测，越短越适合当前网络；清晰度取自片源标注或播放列表，未标注会显示「清晰度未标」。")
+            .font(.system(size: 10.5))
+            .foregroundColor(Theme.textTertiary.opacity(0.85))
+            .padding(.top, 6)
+            .padding(.horizontal, 2)
+    }
+
+    private var loadingView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 9) {
+                ProgressView().tint(Theme.textSecondary)
+                Text("正在搜索所有片源…")
+                    .font(.system(size: 13))
+                    .foregroundColor(Theme.textTertiary)
+            }
+            .padding(.top, 8)
+
+            ForEach(0..<5, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Theme.surface)
+                    .frame(height: 92)
+                    .overlay(
+                        HStack {
+                            Circle().fill(Theme.surfaceHigh).frame(width: 42, height: 42)
+                            VStack(alignment: .leading, spacing: 7) {
+                                RoundedRectangle(cornerRadius: 4).fill(Theme.surfaceHigh).frame(width: 110, height: 12)
+                                RoundedRectangle(cornerRadius: 4).fill(Theme.surfaceHigh).frame(width: 180, height: 9)
+                                RoundedRectangle(cornerRadius: 4).fill(Theme.surfaceHigh).frame(width: 150, height: 9)
+                            }
+                            .padding(.leading, 4)
+                            Spacer()
+                        }
+                        .padding(14)
+                    )
+            }
+        }
+    }
+}
+
+// MARK: - 换源 Sheet
+
+struct SourcePickerSheet: View {
+    let title: String
+    var currentSourceKey: String?
+    let onSelect: (SourceOption) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            SourcePickerView(
+                title: title,
+                currentSourceKey: currentSourceKey
+            ) { option in
+                dismiss()
+                onSelect(option)
+            }
+            .navigationTitle("换源")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+// MARK: - 页面入口
+
+struct TitleSearchView: View {
+    let title: String
+
+    @State private var selected: SourceOption?
+
+    var body: some View {
+        SourcePickerView(title: title) { option in
+            selected = option
+        }
+        .navigationTitle("选择片源")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(
+            isPresented: Binding(
+                get: { selected != nil },
+                set: { if !$0 { selected = nil } }
+            )
+        ) {
+            if let selected {
+                DetailView(
+                    sourceKey: selected.sourceKey,
+                    videoID: selected.result.id,
+                    previewTitle: selected.result.title,
+                    previewPoster: selected.result.poster
+                )
+            }
+        }
+    }
+}
+
 // MARK: - 卡片
 
 struct SourceOptionCard: View {
     let option: SourceOption
     let recommended: Bool
+    var isCurrent: Bool = false
 
     private var symbol: String { AppState.channelSymbol(for: option.sourceKey) }
     private var accent: Color { AppState.channelColor(for: option.sourceKey) }
@@ -465,6 +562,16 @@ struct SourceOptionCard: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.white.opacity(0.94))
                         .lineLimit(1)
+
+                    if isCurrent {
+                        Text("当前")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color(red: 0.55, green: 0.75, blue: 1.0))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.55, green: 0.75, blue: 1.0).opacity(0.16))
+                            .clipShape(Capsule())
+                    }
 
                     if recommended {
                         Text("推荐")
@@ -504,7 +611,12 @@ struct SourceOptionCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(recommended ? Theme.accent.opacity(0.45) : Theme.stroke, lineWidth: 0.7)
+                .stroke(
+                    isCurrent
+                        ? Color(red: 0.55, green: 0.75, blue: 1.0).opacity(0.55)
+                        : (recommended ? Theme.accent.opacity(0.45) : Theme.stroke),
+                    lineWidth: 0.7
+                )
         )
     }
 

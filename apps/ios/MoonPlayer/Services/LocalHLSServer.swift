@@ -120,6 +120,21 @@ final class LocalHLSServer {
         return result
     }
 
+    /// 后台预取：下一集播放列表 + 前几片（不占当前集带宽太多，调用方控制时机）。
+    func preload(for original: URL) {
+        queue.async {
+            guard self.port != nil else { return }
+            let hash = Self.hash(original.absoluteString)
+            self.register(
+                hash: hash,
+                url: original,
+                kind: .playlist,
+                contentType: "application/vnd.apple.mpegurl"
+            )
+            self.loadResource(hash: hash, url: original, kind: .playlist, completion: nil)
+        }
+    }
+
     var cacheSizeBytes: Int64 {
         queue.sync {
             index.values.reduce(Int64(0)) { $0 + Int64($1.size) }

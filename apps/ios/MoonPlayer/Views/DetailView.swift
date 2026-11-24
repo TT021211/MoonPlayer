@@ -16,6 +16,16 @@ struct DetailView: View {
     @State private var playback: PlaybackContext?
     @State private var alertText = ""
     @State private var showAlert = false
+    @State private var showSourcePicker = false
+    @State private var activeSourceKey: String?
+    @State private var activeVideoID: String?
+    @State private var activeTitle: String?
+    @State private var activePoster: String?
+
+    private var currentSourceKey: String { activeSourceKey ?? sourceKey }
+    private var currentVideoID: String { activeVideoID ?? videoID }
+    private var currentTitle: String { activeTitle ?? previewTitle }
+    private var currentPoster: String? { activePoster ?? previewPoster }
 
     private let episodeColumns = Array(
         repeating: GridItem(.flexible(), spacing: 8),
@@ -44,11 +54,29 @@ struct DetailView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showSourcePicker = true
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                }
+                .accessibilityLabel("换源")
+            }
+        }
         .task { await load() }
         .refreshable { await load() }
         .fullScreenCover(item: $playback) { context in
             PlayerScreen(context: context)
                 .environmentObject(app)
+        }
+        .sheet(isPresented: $showSourcePicker) {
+            SourcePickerSheet(
+                title: detail?.title ?? currentTitle,
+                currentSourceKey: detail?.source ?? currentSourceKey
+            ) { option in
+                switchSource(option)
+            }
         }
         .alert("提示", isPresented: $showAlert) {
             Button("好", role: .cancel) {}
@@ -120,12 +148,12 @@ struct DetailView: View {
     }
 
     private func header(_ detail: VideoDetail) -> some View {
-        let aspect = AppState.posterAspect(forSourceKey: detail.source ?? sourceKey)
+        let aspect = AppState.posterAspect(forSourceKey: detail.source ?? currentSourceKey)
         let posterWidth: CGFloat = aspect > 1.1 ? 150 : 108
         let posterHeight = posterWidth / aspect
 
         return ZStack(alignment: .bottom) {
-            RemoteImage(url: app.imageURL(detail.poster ?? previewPoster))
+            RemoteImage(url: app.imageURL(detail.poster ?? currentPoster))
                 .frame(height: 210)
                 .frame(maxWidth: .infinity)
                 .clipped()
@@ -140,7 +168,7 @@ struct DetailView: View {
             .frame(height: 230)
 
             HStack(alignment: .bottom, spacing: 14) {
-                RemoteImage(url: app.imageURL(detail.poster ?? previewPoster))
+                RemoteImage(url: app.imageURL(detail.poster ?? currentPoster))
                     .frame(width: posterWidth, height: posterHeight)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(
@@ -150,7 +178,7 @@ struct DetailView: View {
                     .shadow(color: .black.opacity(0.45), radius: 12, y: 6)
 
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(detail.title.isEmpty ? previewTitle : detail.title)
+                    Text(detail.title.isEmpty ? currentTitle : detail.title)
                         .font(.system(size: 19, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(3)
@@ -170,7 +198,7 @@ struct DetailView: View {
                             .lineLimit(1)
                     }
 
-                    Text(detail.source_name ?? app.sourceName(for: sourceKey))
+                    Text(detail.source_name ?? app.sourceName(for: currentSourceKey))
                         .font(.system(size: 10))
                         .foregroundColor(Theme.textTertiary)
                 }
@@ -216,6 +244,17 @@ struct DetailView: View {
                     .font(.system(size: 11))
                     .foregroundColor(Theme.textTertiary)
                 Spacer()
+                Button {
+                    showSourcePicker = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("换源")
+                            .font(.system(size: 11.5, weight: .medium))
+                    }
+                    .foregroundColor(Theme.accent)
+                }
             }
 
             LazyVGrid(columns: episodeColumns, spacing: 8) {
@@ -260,13 +299,13 @@ struct DetailView: View {
         errorMessage = nil
         do {
             let value = try await app.detail(
-                sourceKey: sourceKey,
-                videoID: videoID,
-                title: previewTitle
+                sourceKey: currentSourceKey,
+                videoID: currentVideoID,
+                title: currentTitle
             )
             detail = value
             isLoading = false
-            isFavorite = app.isFavorite(sourceKey: value.source ?? sourceKey, videoID: value.id)
+            isFavorite = app.isFavorite(sourceKey: value.source ?? currentSourceKey, videoID: value.id)
         } catch APIError.unauthorized {
             app.logout()
         } catch {
@@ -275,9 +314,21 @@ struct DetailView: View {
         }
     }
 
+    @MainActor
+    private func switchSource(_ option: SourceOption) {
+        activeSourceKey = option.sourceKey
+        activeVideoID = option.result.id
+        activeTitle = option.result.title
+        activePoster = option.result.poster
+        detail = nil
+        isLoading = true
+        errorMessage = nil
+        Task { await load() }
+    }
+
     private func playPrimary() {
         guard let detail, detail.episodeCount > 0 else { return }
-        if let record = app.record(sourceKey: detail.source ?? sourceKey, videoID: detail.id) {
+        if let record = app.record(sourceKey: detail.source ?? currentSourceKey, videoID: detail.id) {
             let index = min(max(0, record.index - 1), detail.episodeCount - 1)
             startPlayback(detail: detail, index: index, startTime: record.playTime)
         } else {
@@ -289,11 +340,11 @@ struct DetailView: View {
         guard let episodes = detail.episodes, !episodes.isEmpty else { return }
         let safeIndex = min(max(0, index), episodes.count - 1)
         let context = PlaybackContext(
-            sourceKey: detail.source ?? sourceKey,
-            sourceName: detail.source_name ?? app.sourceName(for: sourceKey),
-            videoID: detail.id.isEmpty ? videoID : detail.id,
+            sourceKey: detail.source ?? currentSourceKey,
+            sourceName: detail.source_name ?? app.sourceName(for: currentSourceKey),
+            videoID: detail.id.isEmpty ? currentVideoID : detail.id,
             title: detail.title,
-            cover: detail.poster ?? previewPoster ?? "",
+            cover: detail.poster ?? currentPoster ?? "",
             year: detail.year ?? "",
             episodes: episodes,
             episodeTitles: detail.episodes_titles ?? [],
@@ -309,7 +360,7 @@ struct DetailView: View {
         guard let detail else { return }
         Task {
             do {
-                let nowFavorite = try await app.toggleFavorite(detail: detail, fallbackSourceKey: sourceKey)
+                let nowFavorite = try await app.toggleFavorite(detail: detail, fallbackSourceKey: currentSourceKey)
                 isFavorite = nowFavorite
                 if nowFavorite { Haptics.success() } else { Haptics.light() }
             } catch {
@@ -322,14 +373,14 @@ struct DetailView: View {
     // MARK: - 文案
 
     private func primaryButtonTitle(_ detail: VideoDetail) -> String {
-        if let record = app.record(sourceKey: detail.source ?? sourceKey, videoID: detail.id) {
+        if let record = app.record(sourceKey: detail.source ?? currentSourceKey, videoID: detail.id) {
             return "继续观看 · 第\(record.index)集"
         }
         return "立即播放"
     }
 
     private func resumeIndex(_ detail: VideoDetail) -> Int? {
-        guard let record = app.record(sourceKey: detail.source ?? sourceKey, videoID: detail.id) else {
+        guard let record = app.record(sourceKey: detail.source ?? currentSourceKey, videoID: detail.id) else {
             return nil
         }
         return min(max(0, record.index - 1), max(0, detail.episodeCount - 1))

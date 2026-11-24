@@ -3,7 +3,7 @@ import Foundation
 
 final class PlayerModel: ObservableObject {
     let player = AVPlayer()
-    let context: PlaybackContext
+    @Published private(set) var context: PlaybackContext
 
     @Published var currentIndex: Int
     @Published var isPlaying = false
@@ -25,6 +25,7 @@ final class PlayerModel: ObservableObject {
     private var lastSaved: Double = -100
     private var didStop = false
     private var didFallback = false
+    private var preloadedEpisodeIndex: Int?
 
     init(context: PlaybackContext) {
         self.context = context
@@ -44,6 +45,22 @@ final class PlayerModel: ObservableObject {
         LocalHLSServer.shared.startIfNeeded()
         installObservers()
         load(index: currentIndex, startTime: context.startTime, autoplay: true)
+    }
+
+    /// 播放页内换源：保留集数索引和当前进度。
+    func switchTo(context newContext: PlaybackContext, startTime: Double) {
+        guard !newContext.episodes.isEmpty else { return }
+        save(force: true)
+
+        context = newContext
+        currentIndex = min(max(0, newContext.startIndex), newContext.episodes.count - 1)
+        didFallback = false
+        preloadedEpisodeIndex = nil
+        if let app {
+            useLocalCache = app.localCacheEnabled
+            preferProxy = app.forceProxy
+        }
+        load(index: currentIndex, startTime: startTime, autoplay: true)
     }
 
     func stop() {
@@ -100,6 +117,7 @@ final class PlayerModel: ObservableObject {
 
         if index != currentIndex {
             didFallback = false
+            preloadedEpisodeIndex = nil
         }
 
         currentIndex = index
@@ -274,6 +292,27 @@ final class PlayerModel: ObservableObject {
         if currentTime - lastSaved >= 5 {
             save(force: false)
         }
+        if currentTime >= 5 {
+            preloadNextEpisodeIfNeeded()
+        }
+    }
+
+    /// 当前集播到 5 秒后，后台把下一集的播放列表和前几片预取到本地。
+    private func preloadNextEpisodeIfNeeded() {
+        guard useLocalCache, let app else { return }
+        let next = currentIndex + 1
+        guard next < context.episodes.count, preloadedEpisodeIndex != next else { return }
+        preloadedEpisodeIndex = next
+
+        guard let url = app.playURL(
+            episode: context.episodes[next],
+            sourceKey: context.sourceKey,
+            proxyMode: context.proxyMode,
+            forceProxy: preferProxy
+        ) else {
+            return
+        }
+        LocalHLSServer.shared.preload(for: url)
     }
 
     private func handleStatus(_ item: AVPlayerItem) {

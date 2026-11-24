@@ -11,6 +11,8 @@ struct PlayerScreen: View {
 
     @State private var showEpisodes = false
     @State private var showSpeed = false
+    @State private var showSourcePicker = false
+    @State private var switchError: String?
 
     @State private var dragMode: DragMode = .none
     @State private var dragStartTime: Double = 0
@@ -115,6 +117,14 @@ struct PlayerScreen: View {
         .sheet(isPresented: $showEpisodes) {
             episodeSheet
         }
+        .sheet(isPresented: $showSourcePicker) {
+            SourcePickerSheet(
+                title: model.context.title,
+                currentSourceKey: model.context.sourceKey
+            ) { option in
+                Task { await switchSource(option) }
+            }
+        }
         .confirmationDialog("播放速度", isPresented: $showSpeed, titleVisibility: .visible) {
             ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
                 Button(rateLabel(rate)) {
@@ -122,6 +132,17 @@ struct PlayerScreen: View {
                 }
             }
             Button("取消", role: .cancel) {}
+        }
+        .alert(
+            "换源失败",
+            isPresented: Binding(
+                get: { switchError != nil },
+                set: { if !$0 { switchError = nil } }
+            )
+        ) {
+            Button("好", role: .cancel) { switchError = nil }
+        } message: {
+            Text(switchError ?? "")
         }
     }
 
@@ -238,11 +259,15 @@ struct PlayerScreen: View {
             bottomBar
         }
         .background(
-            LinearGradient(
-                colors: [.black.opacity(0.62), .clear, .clear, .black.opacity(0.78)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [.black.opacity(0.55), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 130)
+                Spacer(minLength: 0)
+            }
             .allowsHitTesting(false)
         )
     }
@@ -265,7 +290,7 @@ struct PlayerScreen: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
                     .lineLimit(1)
-                Text(model.context.episodeTitle(at: model.currentIndex))
+                Text("\(model.context.sourceName) · \(model.context.episodeTitle(at: model.currentIndex))")
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.65))
                     .lineLimit(1)
@@ -333,7 +358,7 @@ struct PlayerScreen: View {
                     .frame(width: 52, alignment: .trailing)
             }
 
-            HStack(spacing: 26) {
+            HStack(spacing: 22) {
                 Button {
                     Haptics.selection()
                     model.previous()
@@ -368,6 +393,17 @@ struct PlayerScreen: View {
 
                 Button {
                     model.showControls()
+                    showEpisodes = false
+                    showSourcePicker = true
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 17))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .accessibilityLabel("换源")
+
+                Button {
+                    model.showControls()
                     showEpisodes = true
                 } label: {
                     Image(systemName: "rectangle.stack.fill")
@@ -395,8 +431,20 @@ struct PlayerScreen: View {
             }
             .padding(.top, 2)
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 18)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.black.opacity(0.24))
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.6)
+        )
+        .padding(.horizontal, 12)
+        .padding(.bottom, 14)
     }
 
     private var seekHUD: some View {
@@ -528,6 +576,43 @@ struct PlayerScreen: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - 换源
+
+    @MainActor
+    private func switchSource(_ option: SourceOption) async {
+        do {
+            let detail = try await app.detail(
+                sourceKey: option.sourceKey,
+                videoID: option.result.id,
+                title: option.result.title
+            )
+            guard let episodes = detail.episodes, !episodes.isEmpty else {
+                switchError = "该片源没有可用选集"
+                return
+            }
+
+            let index = min(model.currentIndex, episodes.count - 1)
+            let resume = model.currentTime
+            let context = PlaybackContext(
+                sourceKey: detail.source ?? option.sourceKey,
+                sourceName: detail.source_name ?? option.sourceName,
+                videoID: detail.id.isEmpty ? option.result.id : detail.id,
+                title: detail.title,
+                cover: detail.poster ?? option.result.poster ?? "",
+                year: detail.year ?? "",
+                episodes: episodes,
+                episodeTitles: detail.episodes_titles ?? [],
+                proxyMode: detail.proxyMode ?? false,
+                startIndex: index,
+                startTime: resume
+            )
+            model.switchTo(context: context, startTime: resume)
+            flash("已切换到 \(option.sourceName)")
+        } catch {
+            switchError = error.localizedDescription
+        }
     }
 
     // MARK: - 工具
