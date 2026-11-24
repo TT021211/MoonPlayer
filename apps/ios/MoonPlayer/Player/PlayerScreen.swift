@@ -28,6 +28,7 @@ struct PlayerScreen: View {
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
+    @AppStorage("player.fillScreen") private var fillScreen = true
     @State private var isBoosting = false
     @State private var boostInteractionActive = false
     @State private var pressActive = false
@@ -54,7 +55,7 @@ struct PlayerScreen: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            PlayerLayerView(player: model.player)
+            PlayerLayerView(player: model.player, fill: fillScreen)
                 .ignoresSafeArea()
 
             gestureLayer
@@ -97,30 +98,6 @@ struct PlayerScreen: View {
                     Spacer()
                 }
                 .allowsHitTesting(false)
-            }
-
-            if model.boostLocked {
-                VStack {
-                    Button {
-                        model.unlockBoost()
-                        Haptics.light()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 10, weight: .bold))
-                            Text("2x 已锁定 · 点击取消")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(Theme.accent.opacity(0.45), lineWidth: 0.7))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 64)
-                    Spacer()
-                }
             }
 
             if dragMode == .seek {
@@ -289,6 +266,7 @@ struct PlayerScreen: View {
             model.lockBoost()
             suppressTapUntil = Date().addingTimeInterval(0.4)
             Haptics.medium()
+            flash("已锁定 2x", duration: 1.2)
         } else if dx > 40 {
             endLongPressBoost()
         }
@@ -307,7 +285,15 @@ struct PlayerScreen: View {
     private func scheduleLongPressBoost() {
         longPressWorkItem?.cancel()
         let work = DispatchWorkItem {
-            guard pressActive, !isBoosting, !model.boostLocked, model.isPlaying else { return }
+            guard pressActive, !isBoosting else { return }
+            if model.boostLocked {
+                model.unlockBoost()
+                suppressTapUntil = Date().addingTimeInterval(0.4)
+                Haptics.light()
+                flash("已取消 2x")
+                return
+            }
+            guard model.isPlaying else { return }
             beginLongPressBoost()
         }
         longPressWorkItem = work
@@ -367,9 +353,9 @@ struct PlayerScreen: View {
         dragSeekDelta = 0
     }
 
-    private func flash(_ text: String) {
+    private func flash(_ text: String, duration: Double = 0.75) {
         flashText = text
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             if flashText == text { flashText = nil }
         }
     }
@@ -436,6 +422,20 @@ struct PlayerScreen: View {
             }
 
             Spacer(minLength: 0)
+
+            Button {
+                fillScreen.toggle()
+                Haptics.light()
+                flash(fillScreen ? "铺满画面" : "适应画面")
+            } label: {
+                Image(systemName: fillScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.85))
+                    .frame(width: 30, height: 30)
+                    .background(Color.black.opacity(0.35))
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel(fillScreen ? "切换为适应画面" : "切换为铺满画面")
 
             Text(model.useLocalCache ? "本地" : (model.preferProxy ? "缓存" : "直连"))
                 .font(.system(size: 10, weight: .semibold))
