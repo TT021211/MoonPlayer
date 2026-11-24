@@ -70,10 +70,8 @@ jobs:
           file: ./Dockerfile.lite
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: |
-            ghcr.io/tt021211/moontvplus-lite:${{ steps.version.outputs.version }}
-            ghcr.io/tt021211/moontvplus-lite:${{ github.event.inputs.tag || 'latest' }}
-          outputs: type=image,name=ghcr.io/tt021211/moontvplus-lite,name-canonical=true,push=true
+          # 同主镜像：只推 digest，避免 merge 前 latest 被单架构覆盖
+          outputs: type=image,name=ghcr.io/tt021211/moontvplus-lite,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |

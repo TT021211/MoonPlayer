@@ -77,10 +77,10 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: |
-            ghcr.io/tt021211/moontvplus:${{ steps.version.outputs.version }}
-            ghcr.io/tt021211/moontvplus:${{ github.event.inputs.tag || 'latest' }}
-          outputs: type=image,name=ghcr.io/tt021211/moontvplus,name-canonical=true,push=true
+          # 只按 digest 推送，不在这里打 latest/version 标签：
+          # 否则每个平台构建完会先把 latest 覆盖成单架构镜像，amd64/arm64 客户端在
+          # merge 完成前 pull 会报 no matching manifest。
+          outputs: type=image,name=ghcr.io/tt021211/moontvplus,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
