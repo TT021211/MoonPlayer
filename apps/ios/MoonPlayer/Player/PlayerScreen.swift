@@ -253,7 +253,7 @@ struct PlayerScreen: View {
         let dx = abs(value.translation.width)
         let dy = value.translation.height
 
-        if !isBoosting && !model.boostLocked && (dx > 12 || abs(dy) > 12) {
+        if !isBoosting && (dx > 12 || abs(dy) > 12) {
             pressActive = false
             cancelLongPressBoost()
         }
