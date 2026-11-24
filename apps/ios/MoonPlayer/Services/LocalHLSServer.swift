@@ -452,8 +452,13 @@ final class LocalHLSServer {
         completion: ((Result<CachedResource, Error>) -> Void)?
     ) {
         if let cached = readCached(hash) {
+            if kind == .playlist {
+                rebuildIndexIfNeeded(hash: hash, data: cached.data)
+                prefetchFirstSegments(playlistHash: hash)
+            } else {
+                prefetchNext(for: hash)
+            }
             completion?(.success(cached))
-            prefetchNext(for: hash)
             return
         }
 
