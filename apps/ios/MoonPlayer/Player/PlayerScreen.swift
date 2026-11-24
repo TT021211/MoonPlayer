@@ -391,15 +391,32 @@ struct PlayerScreen: View {
             bottomBar
         }
         .background(
-            VStack(spacing: 0) {
-                LinearGradient(
-                    colors: [.black.opacity(0.55), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 130)
-                Spacer(minLength: 0)
+            ZStack {
+                VStack(spacing: 0) {
+                    LinearGradient(
+                        colors: [.black.opacity(0.55), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 130)
+                    Spacer(minLength: 0)
+                }
+
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.28), location: 0.35),
+                            .init(color: .black.opacity(0.72), location: 1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 200)
+                }
             }
+            .ignoresSafeArea()
             .allowsHitTesting(false)
         )
     }
