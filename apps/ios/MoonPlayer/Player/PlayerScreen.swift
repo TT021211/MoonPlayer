@@ -29,6 +29,7 @@ struct PlayerScreen: View {
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
     @State private var isBoosting = false
+    @State private var boostInteractionActive = false
     @State private var pressActive = false
     @State private var longPressWorkItem: DispatchWorkItem?
     @State private var lockedDuringPress = false
@@ -147,6 +148,7 @@ struct PlayerScreen: View {
         }
         .onDisappear {
             pressActive = false
+            boostInteractionActive = false
             cancelLongPressBoost()
             endLongPressBoost()
             model.stop()
@@ -298,6 +300,7 @@ struct PlayerScreen: View {
         if isBoosting {
             endLongPressBoost()
         }
+        boostInteractionActive = false
         lockedDuringPress = false
     }
 
@@ -317,7 +320,7 @@ struct PlayerScreen: View {
     }
 
     private func handleDrag(_ value: DragGesture.Value, size: CGSize) {
-        guard !isBoosting else { return }
+        guard !isBoosting, !boostInteractionActive else { return }
         if dragMode == .none {
             if abs(value.translation.width) > abs(value.translation.height) {
                 dragMode = .seek
@@ -373,6 +376,7 @@ struct PlayerScreen: View {
 
     private func beginLongPressBoost() {
         guard !isBoosting, !model.boostLocked, model.isPlaying else { return }
+        boostInteractionActive = true
         isBoosting = true
         model.beginTemporaryBoost()
         Haptics.medium()
