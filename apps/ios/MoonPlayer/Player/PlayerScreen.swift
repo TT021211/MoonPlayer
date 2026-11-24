@@ -775,7 +775,7 @@ struct PlayerScreen: View {
 
     // MARK: - 工具
 
-    /// 自动铺满：画面比例与屏幕接近时裁切铺满；差距过大（如竖屏中的横屏视频）保持完整画面。
+    /// 自动铺满：仅在几乎不裁切画面时启用（裁切不超过 5%），否则保持完整画面，避免切掉字幕。
     private var effectiveFill: Bool {
         switch fillMode {
         case 1: return true
@@ -784,13 +784,13 @@ struct PlayerScreen: View {
         }
 
         let screen = UIScreen.main.bounds.size
-        guard screen.width > 0, screen.height > 0 else { return isLandscape }
+        guard screen.width > 0, screen.height > 0 else { return false }
         let screenAspect = Double(max(screen.width, screen.height) / min(screen.width, screen.height))
-        guard model.videoAspect > 0 else { return isLandscape }
+        guard model.videoAspect > 0 else { return false }
         if isLandscape {
-            return model.videoAspect >= screenAspect * 0.8
+            return model.videoAspect >= screenAspect * 0.95
         }
-        return model.videoAspect <= (1 / screenAspect) * 1.25
+        return model.videoAspect * screenAspect <= 1.05
     }
 
     private func toggleOrientation() {
