@@ -304,10 +304,8 @@ struct PlayerScreen: View {
     private func scheduleLongPressBoost() {
         longPressWorkItem?.cancel()
         let work = DispatchWorkItem {
-            guard pressActive, !isBoosting, !model.boostLocked else { return }
-            isBoosting = true
-            model.beginTemporaryBoost()
-            Haptics.medium()
+            guard pressActive, !isBoosting, !model.boostLocked, model.isPlaying else { return }
+            beginLongPressBoost()
         }
         longPressWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
