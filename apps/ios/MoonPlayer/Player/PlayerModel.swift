@@ -10,6 +10,7 @@ final class PlayerModel: ObservableObject {
     @Published var controlsVisible = true
     @Published var currentTime: Double = 0
     @Published var duration: Double = 0
+    @Published var bufferedTime: Double = 0
     @Published var isBuffering = true
     @Published var errorMessage: String?
     @Published var playbackRate: Float = 1.0
@@ -26,6 +27,8 @@ final class PlayerModel: ObservableObject {
     private var didStop = false
     private var didFallback = false
     private var preloadedEpisodeIndex: Int?
+    private var temporaryBoost = false
+    private var boostRate: Float = 2.0
 
     init(context: PlaybackContext) {
         self.context = context
@@ -124,6 +127,8 @@ final class PlayerModel: ObservableObject {
         errorMessage = nil
         isBuffering = true
         duration = 0
+        bufferedTime = 0
+        temporaryBoost = false
         currentTime = max(0, startTime)
         lastSaved = -100
 
@@ -178,8 +183,24 @@ final class PlayerModel: ObservableObject {
             controlsVisible = true
             hideWorkItem?.cancel()
         } else {
-            player.playImmediately(atRate: max(0.5, playbackRate))
+            player.playImmediately(atRate: temporaryBoost ? boostRate : max(0.5, playbackRate))
             scheduleHide()
+        }
+    }
+
+    /// 长按画面临时加速，松开恢复用户选择的倍速。
+    func beginTemporaryBoost() {
+        guard isPlaying, !temporaryBoost else { return }
+        temporaryBoost = true
+        boostRate = 2.0
+        player.rate = boostRate
+    }
+
+    func endTemporaryBoost() {
+        guard temporaryBoost else { return }
+        temporaryBoost = false
+        if isPlaying {
+            player.rate = max(0.5, playbackRate)
         }
     }
 
@@ -202,7 +223,7 @@ final class PlayerModel: ObservableObject {
 
     func setRate(_ rate: Float) {
         playbackRate = rate
-        if isPlaying {
+        if isPlaying, !temporaryBoost {
             player.rate = rate
         }
     }
@@ -288,6 +309,16 @@ final class PlayerModel: ObservableObject {
             if total.isFinite, total > 0 {
                 duration = total
             }
+
+            var bufferedEnd = 0.0
+            for value in item.loadedTimeRanges {
+                let range = value.timeRangeValue
+                let end = range.start.seconds + range.duration.seconds
+                if end.isFinite {
+                    bufferedEnd = max(bufferedEnd, end)
+                }
+            }
+            bufferedTime = max(0, bufferedEnd)
         }
         if currentTime - lastSaved >= 5 {
             save(force: false)
@@ -325,7 +356,9 @@ final class PlayerModel: ObservableObject {
                 duration = total
             }
             if isPlaying {
-                player.rate = max(0.5, playbackRate)
+                if !temporaryBoost {
+                    player.rate = max(0.5, playbackRate)
+                }
             }
         case .failed:
             if useLocalCache {

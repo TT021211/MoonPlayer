@@ -28,6 +28,8 @@ struct PlayerScreen: View {
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
+    @State private var isBoosting = false
+    @State private var suppressTapUntil = Date.distantPast
 
     private enum DragMode {
         case none
@@ -75,6 +77,24 @@ struct PlayerScreen: View {
                     .clipShape(Capsule())
             }
 
+            if isBoosting {
+                VStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("2x 倍速中 · 松开恢复")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.top, 64)
+                    Spacer()
+                }
+                .allowsHitTesting(false)
+            }
+
             if dragMode == .seek {
                 seekHUD
             }
@@ -99,6 +119,7 @@ struct PlayerScreen: View {
             model.configure(app: app)
         }
         .onDisappear {
+            endLongPressBoost()
             model.stop()
             try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
             UIApplication.shared.isIdleTimerDisabled = false
@@ -132,6 +153,8 @@ struct PlayerScreen: View {
                 }
             }
             Button("取消", role: .cancel) {}
+        } message: {
+            Text("长按画面可临时 2x 倍速，松开恢复")
         }
         .alert(
             "换源失败",
@@ -173,11 +196,28 @@ struct PlayerScreen: View {
                             handleDragEnd(value, size: proxy.size)
                         }
                 )
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.45)
+                        .sequenced(before: DragGesture(minimumDistance: 0))
+                        .onChanged { value in
+                            if case .first(true) = value {
+                                beginLongPressBoost()
+                            }
+                        }
+                        .onEnded { _ in
+                            endLongPressBoost()
+                        }
+                )
         }
         .ignoresSafeArea()
     }
 
     private func handleSingleTap() {
+        if isBoosting {
+            endLongPressBoost()
+            return
+        }
+        guard Date() >= suppressTapUntil else { return }
         pendingSingleTap?.cancel()
         let work = DispatchWorkItem {
             model.toggleControls()
@@ -187,6 +227,11 @@ struct PlayerScreen: View {
     }
 
     private func handleDoubleTap(at location: CGPoint, size: CGSize) {
+        if isBoosting {
+            endLongPressBoost()
+            return
+        }
+        guard Date() >= suppressTapUntil else { return }
         pendingSingleTap?.cancel()
         Haptics.light()
         if location.x < size.width * 0.36 {
@@ -201,6 +246,7 @@ struct PlayerScreen: View {
     }
 
     private func handleDrag(_ value: DragGesture.Value, size: CGSize) {
+        guard !isBoosting else { return }
         if dragMode == .none {
             if abs(value.translation.width) > abs(value.translation.height) {
                 dragMode = .seek
@@ -236,6 +282,10 @@ struct PlayerScreen: View {
     }
 
     private func handleDragEnd(_ value: DragGesture.Value, size: CGSize) {
+        if isBoosting {
+            endLongPressBoost()
+            return
+        }
         if dragMode == .seek {
             model.seek(to: dragStartTime + dragSeekDelta)
         }
@@ -248,6 +298,20 @@ struct PlayerScreen: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
             if flashText == text { flashText = nil }
         }
+    }
+
+    private func beginLongPressBoost() {
+        guard !isBoosting, model.isPlaying else { return }
+        isBoosting = true
+        model.beginTemporaryBoost()
+        Haptics.medium()
+    }
+
+    private func endLongPressBoost() {
+        guard isBoosting else { return }
+        isBoosting = false
+        suppressTapUntil = Date().addingTimeInterval(0.4)
+        model.endTemporaryBoost()
     }
 
     // MARK: - 控制层
@@ -330,27 +394,19 @@ struct PlayerScreen: View {
                     .foregroundColor(.white.opacity(0.8))
                     .frame(width: 52, alignment: .leading)
 
-                Slider(
-                    value: Binding(
-                        get: {
-                            let value = scrubbing ? scrubValue : model.currentTime
-                            return min(max(value, 0), maxDuration)
-                        },
-                        set: { scrubValue = $0 }
-                    ),
-                    in: 0...maxDuration,
-                    onEditingChanged: { editing in
-                        if editing {
-                            scrubbing = true
-                            scrubValue = model.currentTime
-                            model.showControls()
-                        } else {
-                            model.seek(to: scrubValue)
-                            scrubbing = false
-                        }
+                PlayerProgressBar(
+                    currentTime: model.currentTime,
+                    duration: model.duration,
+                    bufferedTime: model.bufferedTime,
+                    scrubbing: $scrubbing,
+                    scrubValue: $scrubValue,
+                    onScrubStart: {
+                        model.showControls()
+                    },
+                    onSeek: { target in
+                        model.seek(to: target)
                     }
                 )
-                .tint(Theme.accent)
 
                 Text(formatTime(model.duration))
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -619,10 +675,6 @@ struct PlayerScreen: View {
 
     // MARK: - 工具
 
-    private var maxDuration: Double {
-        max(model.duration, 1)
-    }
-
     private func toggleOrientation() {
         isLandscape.toggle()
         OrientationManager.shared.lock(isLandscape ? .landscape : .portrait)
@@ -648,5 +700,69 @@ struct PlayerScreen: View {
             return String(format: "%d:%02d:%02d", h, m, s)
         }
         return String(format: "%02d:%02d", m, s)
+    }
+}
+
+// MARK: - 缓冲进度条
+
+struct PlayerProgressBar: View {
+    let currentTime: Double
+    let duration: Double
+    let bufferedTime: Double
+    @Binding var scrubbing: Bool
+    @Binding var scrubValue: Double
+    var onScrubStart: (() -> Void)?
+    let onSeek: (Double) -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            let total = max(duration, 1)
+            let playedValue = min(max(scrubbing ? scrubValue : currentTime, 0), total)
+            let played = playedValue / total
+            let buffered = min(max(bufferedTime, 0), total) / total
+            let thumbSize: CGFloat = scrubbing ? 14 : 11
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(height: 4)
+
+                Capsule()
+                    .fill(Color.white.opacity(0.38))
+                    .frame(width: width * buffered, height: 4)
+
+                Capsule()
+                    .fill(Theme.accent)
+                    .frame(width: width * played, height: 4)
+
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
+                    .offset(x: width * played - thumbSize / 2)
+            }
+            .frame(width: width, height: 28)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if !scrubbing {
+                            scrubbing = true
+                            scrubValue = playedValue
+                            onScrubStart?()
+                        }
+                        let x = min(max(value.location.x, 0), width)
+                        scrubValue = total * x / width
+                    }
+                    .onEnded { value in
+                        let x = min(max(value.location.x, 0), width)
+                        let target = total * x / width
+                        onSeek(target)
+                        scrubbing = false
+                    }
+            )
+        }
+        .frame(height: 28)
     }
 }
