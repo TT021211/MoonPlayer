@@ -29,6 +29,9 @@ struct PlayerScreen: View {
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
     @State private var isBoosting = false
+    @State private var pressActive = false
+    @State private var longPressWorkItem: DispatchWorkItem?
+    @State private var lockedDuringPress = false
     @State private var suppressTapUntil = Date.distantPast
 
     private enum DragMode {
@@ -82,7 +85,7 @@ struct PlayerScreen: View {
                     HStack(spacing: 6) {
                         Image(systemName: "forward.fill")
                             .font(.system(size: 11, weight: .bold))
-                        Text("2x 倍速中 · 松开恢复")
+                        Text("2x 倍速中 · 上滑锁定")
                             .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -93,6 +96,30 @@ struct PlayerScreen: View {
                     Spacer()
                 }
                 .allowsHitTesting(false)
+            }
+
+            if model.boostLocked {
+                VStack {
+                    Button {
+                        model.unlockBoost()
+                        Haptics.light()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 10, weight: .bold))
+                            Text("2x 已锁定 · 点击取消")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(Theme.accent.opacity(0.45), lineWidth: 0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 64)
+                    Spacer()
+                }
             }
 
             if dragMode == .seek {
@@ -119,6 +146,8 @@ struct PlayerScreen: View {
             model.configure(app: app)
         }
         .onDisappear {
+            pressActive = false
+            cancelLongPressBoost()
             endLongPressBoost()
             model.stop()
             try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
@@ -154,7 +183,7 @@ struct PlayerScreen: View {
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("长按画面可临时 2x 倍速，松开恢复")
+            Text("长按画面 0.5 秒临时 2x，上滑锁定；单击控制栏，双击暂停")
         }
         .alert(
             "换源失败",
@@ -177,8 +206,8 @@ struct PlayerScreen: View {
                 .contentShape(Rectangle())
                 .simultaneousGesture(
                     SpatialTapGesture(count: 2)
-                        .onEnded { value in
-                            handleDoubleTap(at: value.location, size: proxy.size)
+                        .onEnded { _ in
+                            handleDoubleTap()
                         }
                 )
                 .simultaneousGesture(
@@ -197,15 +226,12 @@ struct PlayerScreen: View {
                         }
                 )
                 .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.45)
-                        .sequenced(before: DragGesture(minimumDistance: 0))
+                    DragGesture(minimumDistance: 0)
                         .onChanged { value in
-                            if case .first(true) = value {
-                                beginLongPressBoost()
-                            }
+                            handlePress(value)
                         }
                         .onEnded { _ in
-                            endLongPressBoost()
+                            endPress()
                         }
                 )
         }
@@ -226,7 +252,7 @@ struct PlayerScreen: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.26, execute: work)
     }
 
-    private func handleDoubleTap(at location: CGPoint, size: CGSize) {
+    private func handleDoubleTap() {
         if isBoosting {
             endLongPressBoost()
             return
@@ -234,15 +260,62 @@ struct PlayerScreen: View {
         guard Date() >= suppressTapUntil else { return }
         pendingSingleTap?.cancel()
         Haptics.light()
-        if location.x < size.width * 0.36 {
-            model.seek(by: -10)
-            flash("快退 10 秒")
-        } else if location.x > size.width * 0.64 {
-            model.seek(by: 10)
-            flash("快进 10 秒")
-        } else {
-            model.playPause()
+        model.playPause()
+    }
+
+    // MARK: - 长按 / 上滑锁定
+
+    private func handlePress(_ value: DragGesture.Value) {
+        if !pressActive {
+            pressActive = true
+            scheduleLongPressBoost()
         }
+
+        let dx = abs(value.translation.width)
+        let dy = value.translation.height
+
+        if !isBoosting && !model.boostLocked && (dx > 12 || abs(dy) > 12) {
+            pressActive = false
+            cancelLongPressBoost()
+        }
+
+        guard isBoosting else { return }
+
+        if dy < -30, !lockedDuringPress {
+            lockedDuringPress = true
+            isBoosting = false
+            model.lockBoost()
+            suppressTapUntil = Date().addingTimeInterval(0.4)
+            Haptics.medium()
+        } else if dx > 40 {
+            endLongPressBoost()
+        }
+    }
+
+    private func endPress() {
+        pressActive = false
+        cancelLongPressBoost()
+        if isBoosting {
+            endLongPressBoost()
+        }
+        lockedDuringPress = false
+    }
+
+    private func scheduleLongPressBoost() {
+        longPressWorkItem?.cancel()
+        let work = DispatchWorkItem {
+            guard pressActive, !isBoosting, !model.boostLocked else { return }
+            isBoosting = true
+            model.beginTemporaryBoost()
+            Haptics.medium()
+        }
+        longPressWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+    }
+
+    private func cancelLongPressBoost() {
+        longPressWorkItem?.cancel()
+        longPressWorkItem = nil
     }
 
     private func handleDrag(_ value: DragGesture.Value, size: CGSize) {
@@ -301,7 +374,7 @@ struct PlayerScreen: View {
     }
 
     private func beginLongPressBoost() {
-        guard !isBoosting, model.isPlaying else { return }
+        guard !isBoosting, !model.boostLocked, model.isPlaying else { return }
         isBoosting = true
         model.beginTemporaryBoost()
         Haptics.medium()
@@ -471,7 +544,7 @@ struct PlayerScreen: View {
                     model.showControls()
                     showSpeed = true
                 } label: {
-                    Text(rateLabel(Double(model.playbackRate)))
+                    Text((model.boostLocked || isBoosting) ? "2x" : rateLabel(Double(model.playbackRate)))
                         .font(.system(size: 12.5, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                         .frame(minWidth: 28)

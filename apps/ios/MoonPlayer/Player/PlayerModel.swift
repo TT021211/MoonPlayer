@@ -16,6 +16,7 @@ final class PlayerModel: ObservableObject {
     @Published var playbackRate: Float = 1.0
     @Published var preferProxy = false
     @Published var useLocalCache = false
+    @Published var boostLocked = false
 
     private weak var app: AppState?
     private var timeObserver: Any?
@@ -173,7 +174,7 @@ final class PlayerModel: ObservableObject {
             )
         }
         if autoplay {
-            player.playImmediately(atRate: max(0.5, playbackRate))
+            player.playImmediately(atRate: effectiveRate)
         }
     }
 
@@ -183,14 +184,14 @@ final class PlayerModel: ObservableObject {
             controlsVisible = true
             hideWorkItem?.cancel()
         } else {
-            player.playImmediately(atRate: temporaryBoost ? boostRate : max(0.5, playbackRate))
+            player.playImmediately(atRate: effectiveRate)
             scheduleHide()
         }
     }
 
     /// 长按画面临时加速，松开恢复用户选择的倍速。
     func beginTemporaryBoost() {
-        guard isPlaying, !temporaryBoost else { return }
+        guard isPlaying, !temporaryBoost, !boostLocked else { return }
         temporaryBoost = true
         boostRate = 2.0
         player.rate = boostRate
@@ -199,9 +200,33 @@ final class PlayerModel: ObservableObject {
     func endTemporaryBoost() {
         guard temporaryBoost else { return }
         temporaryBoost = false
+        if isPlaying, !boostLocked {
+            player.rate = max(0.5, playbackRate)
+        }
+    }
+
+    /// 长按后上滑锁定 2x，松手也保持。
+    func lockBoost() {
+        guard temporaryBoost else { return }
+        temporaryBoost = false
+        boostLocked = true
+        boostRate = 2.0
+        player.rate = boostRate
+    }
+
+    func unlockBoost() {
+        guard boostLocked else { return }
+        boostLocked = false
         if isPlaying {
             player.rate = max(0.5, playbackRate)
         }
+    }
+
+    private var effectiveRate: Float {
+        if boostLocked || temporaryBoost {
+            return max(2.0, boostRate)
+        }
+        return max(0.5, playbackRate)
     }
 
     func seek(to seconds: Double) {
@@ -222,6 +247,7 @@ final class PlayerModel: ObservableObject {
     }
 
     func setRate(_ rate: Float) {
+        boostLocked = false
         playbackRate = rate
         if isPlaying, !temporaryBoost {
             player.rate = rate
@@ -356,9 +382,7 @@ final class PlayerModel: ObservableObject {
                 duration = total
             }
             if isPlaying {
-                if !temporaryBoost {
-                    player.rate = max(0.5, playbackRate)
-                }
+                player.rate = effectiveRate
             }
         case .failed:
             if useLocalCache {
